@@ -1,7 +1,23 @@
 # Book Shelf / 书架
 
+[![GitHub](https://img.shields.io/badge/GitHub-0avatar0%2Fdsh--reading--shelf-181717?logo=github)](https://github.com/0avatar0/dsh-reading-shelf)
+[![Release](https://img.shields.io/badge/release-v2.4.4-2ea44f)](https://github.com/0avatar0/dsh-reading-shelf/releases/tag/v2.4.4)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 A persistent DSH Web UI plugin that adds a full-page multi-format reader to the
-sidebar and an AI explanation rail for selected text.
+sidebar and an AI explanation rail for selected text. It also includes a
+separate paper library with paragraph/whole-paper translation and bilingual
+comparison.
+
+## Install
+
+1. Download `dsh-epub-reader-2.4.4.tgz` from the
+   [latest release](https://github.com/0avatar0/dsh-reading-shelf/releases/tag/v2.4.4).
+2. In DSH open **Plugins → Add plugin** and choose the downloaded tgz.
+3. Reload the plugin and open **书架** in the sidebar.
+
+Chinese step-by-step guide: [INSTALL-zh.md](INSTALL-zh.md). Publishing and npm
+instructions: [PUBLISHING.md](PUBLISHING.md).
 
 ## What it does
 
@@ -150,3 +166,9 @@ explanations over SSE.
 - Downloads are bounded to 120 MB and fetched only from allow-listed
   `gutenberg.org` / `standardebooks.org` hosts. Large books can take a while.
 - The search feature needs outbound network access from the DSH Host process.
+
+## License
+
+Plugin code is released under the [MIT License](LICENSE). The bundled PDF.js
+runtime keeps its own Apache-2.0 license under `vendor/pdfjs/LICENSE`; bundled
+fonts keep the licenses in `vendor/pdfjs/standard_fonts/`.
