@@ -1,0 +1,46 @@
+{
+  "name": "@local/dsh-epub-reader",
+  "version": "2.4.4",
+  "private": true,
+  "description": "Read EPUB, PDF, TXT, Markdown, HTML, FB2, and DOCX books inside the Harness Web UI and explain selected text with the configured model.",
+  "keywords": [
+    "dsh-plugin",
+    "epub",
+    "reader",
+    "ai",
+    "deepseek-harness"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib/*.js",
+    "vendor/pdfjs/**",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md"
+  ],
+  "dsh": {
+    "engines": {
+      "dsh": ">=0.2.1-rc.2"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ]
+    }
+  }
+}

@@ -1,0 +1,17 @@
+# EPUB Reader — a persistent Harness bundle.
+#
+# `archiveDir` is where books from outside the shelf are copied. Leave it empty
+# to use the first registered workspace (D:\BookLib on this machine).
+#   archiveDir: D:\BookLib
+#
+# `libraryDirs` is optional. Leave it empty to scan only the archive shelf.
+# Add absolute folders to expose more shelves.
+#
+# To pin the explanation model independently of the Host default:
+#   explainProvider: deepseek-account
+#   explainModel: deepseek-flash
+- insert:
+    - id: epub-reader
+      name: '@local/dsh-epub-reader'
+      config:
+        libraryDirs: []
