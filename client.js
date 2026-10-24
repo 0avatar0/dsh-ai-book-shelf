@@ -136,6 +136,13 @@ window.__ModuleLoader__.load({
       'dossiers.emptyHint': '导入卷宗文件；可以按住 Ctrl / Cmd 或按 Ctrl+A 全选多个文件。文件名正好是 SKILL.md 的 Markdown 会作为该文件夹的 Skill。',
       'dossiers.skillHint': '提示：一次可全选多个文件；把 SKILL.md 和卷宗一起导入，AI 总结时会优先遵循该 Skill。',
       'dossiers.skills': '文件夹 Skill',
+      'dossiers.createSkill': '新建 Skill',
+      'dossiers.noSkill': '还没有 Skill。新建文件夹会自动生成一个空 Skill。',
+      'dossiers.skillEmptyHint': '空 Skill，点击填写',
+      'dossiers.editSkill': '编辑 Skill',
+      'dossiers.skillEditorHint': '在这里写下这个卷宗的总结要求，例如关注的时间线、风险、输出格式。保存后 AI 总结会按它执行。',
+      'dossiers.skillPlaceholder': '# 卷宗总结 Skill\n\n请填写：\n- 需要重点关注的事实和时间线\n- 风险判断标准\n- 希望输出的格式',
+      'dossiers.save': '保存',
       'dossiers.summary': 'AI 总结',
       'dossiers.summaryTitle': 'AI 卷宗总结',
       'dossiers.summarySearchTitle': 'AI 总结搜索结果',
@@ -368,6 +375,13 @@ window.__ModuleLoader__.load({
       'dossiers.emptyHint': 'Import dossier files; hold Ctrl / Cmd or press Ctrl+A to select many. A Markdown file named SKILL.md becomes a folder skill.',
       'dossiers.skillHint': 'Tip: select many files at once; import SKILL.md with the dossiers and AI summaries will follow it.',
       'dossiers.skills': 'Folder skills',
+      'dossiers.createSkill': 'New skill',
+      'dossiers.noSkill': 'No skill yet. Creating a folder adds an empty skill automatically.',
+      'dossiers.skillEmptyHint': 'Empty skill — click to fill in',
+      'dossiers.editSkill': 'Edit skill',
+      'dossiers.skillEditorHint': 'Write the summary instructions for this dossier: timeline, risks, output format. AI summaries will follow it.',
+      'dossiers.skillPlaceholder': '# Dossier summary skill\n\nDescribe what to focus on:\n- key facts and timeline\n- risk criteria\n- preferred output format',
+      'dossiers.save': 'Save',
       'dossiers.summary': 'AI summary',
       'dossiers.summaryTitle': 'AI dossier summary',
       'dossiers.summarySearchTitle': 'AI search summary',
@@ -976,7 +990,18 @@ window.__ModuleLoader__.load({
 .epub-dossier-card p { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin: 6px 0 9px; color: var(--epub-muted); font-size: 9.5px; line-height: 1.55; overflow-wrap: anywhere; }
 .epub-dossier-meta { display: flex; justify-content: space-between; gap: 6px; color: var(--epub-muted); font-size: 8.5px; }
 .epub-dossier-skills { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--epub-line); }
-.epub-dossier-skills-head { margin-bottom: 5px; color: var(--epub-muted); font-size: 8.5px; text-transform: uppercase; letter-spacing: .06em; }
+.epub-dossier-skills-head { display: flex; align-items: center; justify-content: space-between; gap: 5px; margin-bottom: 5px; color: var(--epub-muted); font-size: 8.5px; text-transform: uppercase; letter-spacing: .06em; }
+.epub-dossier-skill-add { display: grid; place-items: center; width: 20px; height: 20px; border: 0; border-radius: 4px; background: transparent; color: var(--epub-muted); font-size: 14px; line-height: 1; }
+.epub-dossier-skill-add:hover { color: var(--epub-text); background: var(--epub-surface-2); }
+.epub-dossier-skill-empty { margin: 3px 0 0; color: var(--epub-muted); font-size: 8.5px; line-height: 1.5; }
+.epub-dossier-skill.is-empty { color: var(--epub-muted); font-style: italic; }
+.epub-skill-editor { display: flex; flex-direction: column; width: min(620px, 100%); max-height: min(82vh, 680px); border: 1px solid var(--epub-line-strong); border-radius: 13px; background: var(--epub-surface); box-shadow: 0 22px 60px -18px rgba(0,0,0,.6); }
+.epub-skill-editor header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 14px 16px 0; }
+.epub-skill-editor h3 { margin: 2px 0 0; font-size: 15px; }
+.epub-skill-editor-hint { margin: 8px 16px 0; color: var(--epub-muted); font-size: 9.5px; line-height: 1.55; }
+.epub-skill-editor-text { flex: 1; min-height: 260px; margin: 10px 16px 0; padding: 10px; border: 1px solid var(--epub-line); border-radius: 8px; outline: 0; background: var(--dsw-alias-bg-base); color: var(--epub-text); font-family: var(--epub-mono, ui-monospace, monospace); font-size: 11px; line-height: 1.65; resize: vertical; }
+.epub-skill-editor-text:focus { border-color: color-mix(in srgb, var(--epub-accent) 45%, var(--epub-line)); }
+.epub-skill-editor .epub-dialog-actions { padding: 0 16px 14px; }
 .epub-dossier-skill { display: flex; align-items: center; gap: 4px; width: 100%; margin: 2px 0; padding: 4px 5px; border: 0; border-radius: 5px; background: transparent; color: var(--epub-text); font-size: 9px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .epub-dossier-skill:hover { background: var(--epub-surface-2); }
 .epub-dossier-summary-backdrop { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: 20px; background: rgba(0,0,0,.38); }
@@ -2988,6 +3013,7 @@ window.__ModuleLoader__.load({
       const [dialog, setDialog] = React.useState(null)
       const [contextMenu, setContextMenu] = React.useState(null)
       const [importFolderId, setImportFolderId] = React.useState(null)
+      const [skillEditor, setSkillEditor] = React.useState(null)
       const [summary, setSummary] = React.useState({ open: false, status: 'idle', text: '', title: '', error: '' })
       const fileRef = React.useRef(null)
       const summaryAbort = React.useRef(null)
@@ -3082,6 +3108,35 @@ window.__ModuleLoader__.load({
         }
       }
 
+      async function openSkillEditor(item) {
+        try {
+          const data = await apiGet(`/dossiers/skill?id=${encodeURIComponent(item.id)}`)
+          setSkillEditor({ id: item.id, title: item.title, text: data.text ?? '' })
+        } catch (reason) {
+          setError(reason instanceof Error ? reason.message : String(reason))
+        }
+      }
+
+      async function saveSkill() {
+        if (skillEditor === null) return
+        try {
+          await apiPost('/dossiers/skill', { id: skillEditor.id, text: skillEditor.text })
+          setSkillEditor(null)
+          await load()
+        } catch (reason) {
+          setError(reason instanceof Error ? reason.message : String(reason))
+        }
+      }
+
+      async function createSkill() {
+        try {
+          await apiPost('/dossiers/skill/create', { folderId })
+          await load()
+        } catch (reason) {
+          setError(reason instanceof Error ? reason.message : String(reason))
+        }
+      }
+
       function stopSummary() {
         summaryAbort.current?.abort()
         summaryAbort.current = null
@@ -3156,9 +3211,19 @@ window.__ModuleLoader__.load({
                 h('button', { type: 'button', className: 'epub-paper-folder-rename', onClick: () => openDialog('folderRename', entry.name, entry.id), title: t('dossiers.renameFolder') }, '✎'),
               ),
             ),
-            skills.length > 0
-              ? h('div', { className: 'epub-dossier-skills' }, h('div', { className: 'epub-dossier-skills-head' }, t('dossiers.skills')), skills.map((item) => h('button', { key: item.id, type: 'button', className: 'epub-dossier-skill', onClick: () => openContext({ preventDefault() {}, stopPropagation() {}, clientX: 30, clientY: 30 }, 'item', { itemId: item.id }), title: item.preview }, h(IconSparkles, { size: 12 }), item.title)))
-              : null,
+            h('div', { className: 'epub-dossier-skills' },
+              h('div', { className: 'epub-dossier-skills-head' }, t('dossiers.skills'), h('button', { type: 'button', className: 'epub-dossier-skill-add', onClick: () => void createSkill(), title: t('dossiers.createSkill') }, '+')),
+              skills.length === 0
+                ? h('p', { className: 'epub-dossier-skill-empty' }, t('dossiers.noSkill'))
+                : skills.map((item) => h('button', {
+                    key: item.id,
+                    type: 'button',
+                    className: cn('epub-dossier-skill', item.preview === '' && 'is-empty'),
+                    onClick: () => void openSkillEditor(item),
+                    onContextMenu: (event) => openContext(event, 'item', { itemId: item.id }),
+                    title: item.preview || t('dossiers.skillEmptyHint'),
+                  }, h(IconSparkles, { size: 12 }), item.title)),
+            ),
           ),
           h('main', { className: 'epub-paper-main', onContextMenu: (event) => openContext(event, 'library') },
             h('div', { className: 'epub-paper-main-head' },
@@ -3212,6 +3277,7 @@ window.__ModuleLoader__.load({
                     const item = state.items.find((entry) => entry.id === contextMenu.itemId)
                     return item === undefined ? null : h(React.Fragment, null,
                       item.kind === 'document' ? h('button', { type: 'button', className: 'epub-context-item', onClick: () => { setContextMenu(null); onRead(item.id) } }, t('dossiers.open')) : null,
+                      item.kind === 'skill' ? h('button', { type: 'button', className: 'epub-context-item', onClick: () => { setContextMenu(null); void openSkillEditor(item) } }, t('dossiers.editSkill')) : null,
                       h('button', { type: 'button', className: 'epub-context-item', onClick: () => { setContextMenu(null); openDialog('rename', item.title, item.id) } }, t('dossiers.rename')),
                       h('button', {
                         type: 'button',
@@ -3243,6 +3309,27 @@ window.__ModuleLoader__.load({
                 h('div', { className: 'epub-dialog-actions' },
                   h('button', { type: 'button', className: 'epub-btn', onClick: () => setDialog(null) }, t('papers.cancel')),
                   h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => void submitDialog() }, t('papers.confirm')),
+                ),
+              ),
+            )
+          : null,
+        skillEditor !== null
+          ? h('div', { className: 'epub-dialog-backdrop', onMouseDown: (event) => { if (event.target === event.currentTarget) setSkillEditor(null) } },
+              h('section', { className: 'epub-skill-editor' },
+                h('header', null,
+                  h('div', null, h('p', { className: 'epub-eyebrow' }, 'DOSSIER SKILL'), h('h3', null, t('dossiers.editSkill'))),
+                  h('button', { type: 'button', className: 'epub-icon-btn', onClick: () => setSkillEditor(null), title: t('papers.close') }, h(IconX, { size: 16 })),
+                ),
+                h('p', { className: 'epub-skill-editor-hint' }, t('dossiers.skillEditorHint')),
+                h('textarea', {
+                  className: 'epub-skill-editor-text',
+                  value: skillEditor.text,
+                  onChange: (event) => setSkillEditor({ ...skillEditor, text: event.target.value }),
+                  placeholder: t('dossiers.skillPlaceholder'),
+                }),
+                h('div', { className: 'epub-dialog-actions' },
+                  h('button', { type: 'button', className: 'epub-btn', onClick: () => setSkillEditor(null) }, t('papers.cancel')),
+                  h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => void saveSkill() }, t('dossiers.save')),
                 ),
               ),
             )

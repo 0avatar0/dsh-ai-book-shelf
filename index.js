@@ -1814,6 +1814,21 @@ function createHandler(ctx, config) {
     return root
   }
 
+  async function createDossierSkill(archiveDir, folderId, force = false) {
+    const root = await ensureDossierDirs(archiveDir)
+    const library = await readDossierLibrary(archiveDir)
+    const existing = library.items.find((entry) => entry.kind === 'skill' && entry.folderId === folderId)
+    if (existing !== undefined && !force) return existing
+    const id = existing?.id ?? `skill-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
+    const target = path.join(root, 'skills', `${folderId || 'unsorted'}-${id}.md`)
+    await fs.writeFile(target, '', 'utf8')
+    const item = { id, kind: 'skill', title: '卷宗 Skill（待填写）', path: target, text: '', folderId, addedAt: Date.now(), size: 0, format: 'SKILL' }
+    library.items = library.items.filter((entry) => entry.id !== id)
+    library.items.push(item)
+    await writeDossierLibrary(archiveDir, library)
+    return item
+  }
+
   async function readDossierLibrary(archiveDir) {
     const root = await ensureDossierDirs(archiveDir)
     try {
@@ -2001,7 +2016,10 @@ function createHandler(ctx, config) {
       if (text.trim() !== '') sections.push(`【${item.title}】\n${text}`)
     }
     if (sections.length === 0) throw new HttpError(422, 'DOSSIER_NO_TEXT', '卷宗文件没有可总结的文字')
-    const skillText = skills.map((item) => `## ${item.title}\n${String(item.text ?? '').slice(0, 6000)}`).join('\n\n')
+    const skillText = skills
+      .filter((item) => String(item.text ?? '').trim() !== '')
+      .map((item) => `## ${item.title}\n${String(item.text ?? '').slice(0, 6000)}`)
+      .join('\n\n')
     const system = '你是卷宗分析助手。请严格依据提供的卷宗内容作答；有 Skill 时优先遵循 Skill 中的方法与格式。不要编造卷宗中没有的事实。'
     const prompt = [
       `卷宗：${folder?.name ?? '未分类卷宗'}`,
@@ -2549,7 +2567,8 @@ function createHandler(ctx, config) {
         const folder = { id: `dfolder-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`, name, createdAt: Date.now() }
         library.folders.push(folder)
         await writeDossierLibrary(archiveDir, library)
-        sendJson(res, 200, { folder })
+        const skill = await createDossierSkill(archiveDir, folder.id)
+        sendJson(res, 200, { folder, skill: dossierItemPublic(skill) })
         return
       }
 
@@ -2577,6 +2596,50 @@ function createHandler(ctx, config) {
         library.items = library.items.map((entry) => entry.folderId === id ? { ...entry, folderId: '' } : entry)
         await writeDossierLibrary(archiveDir, library)
         sendJson(res, 200, { deleted: true })
+        return
+      }
+
+      if (method === 'POST' && pathname === '/dossiers/skill/create') {
+        const payload = await readJson(req)
+        const folderId = typeof payload.folderId === 'string' ? payload.folderId : ''
+        const archiveDir = await ensureArchiveDir(config, ctx)
+        const item = await createDossierSkill(archiveDir, folderId)
+        sendJson(res, 200, { item: dossierItemPublic(item) })
+        return
+      }
+
+      if (method === 'GET' && pathname === '/dossiers/skill') {
+        const id = (url.searchParams.get('id') ?? '').trim()
+        const archiveDir = await ensureArchiveDir(config, ctx)
+        const library = await readDossierLibrary(archiveDir)
+        const item = library.items.find((entry) => entry.id === id && entry.kind === 'skill')
+        if (item === undefined) throw new HttpError(404, 'SKILL_NOT_FOUND', '卷宗 Skill 不存在')
+        let text = item.text ?? ''
+        if (typeof item.path === 'string' && item.path !== '') {
+          try { text = await fs.readFile(item.path, 'utf8') } catch { /* keep cached text */ }
+        }
+        sendJson(res, 200, { item: dossierItemPublic(item), text })
+        return
+      }
+
+      if (method === 'POST' && pathname === '/dossiers/skill') {
+        const payload = await readJson(req)
+        const id = typeof payload.id === 'string' ? payload.id : ''
+        if (typeof payload.text !== 'string') throw new HttpError(400, 'BAD_SKILL', '缺少 Skill 内容')
+        const archiveDir = await ensureArchiveDir(config, ctx)
+        const library = await readDossierLibrary(archiveDir)
+        const item = library.items.find((entry) => entry.id === id && entry.kind === 'skill')
+        if (item === undefined) throw new HttpError(404, 'SKILL_NOT_FOUND', '卷宗 Skill 不存在')
+        const text = payload.text.slice(0, 50000)
+        item.text = text
+        item.size = Buffer.byteLength(text)
+        item.title = text.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? (text.trim() === '' ? '卷宗 Skill（待填写）' : '卷宗 Skill')
+        if (typeof item.path === 'string' && item.path !== '') {
+          await fs.mkdir(path.dirname(item.path), { recursive: true })
+          await fs.writeFile(item.path, text, 'utf8')
+        }
+        await writeDossierLibrary(archiveDir, library)
+        sendJson(res, 200, { item: dossierItemPublic(item), text })
         return
       }
 

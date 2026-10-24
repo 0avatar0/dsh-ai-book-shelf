@@ -1,7 +1,7 @@
 # AI Book Shelf / AI 书架
 
 [![GitHub](https://img.shields.io/badge/GitHub-0avatar0%2Fdsh--ai--book--shelf-181717?logo=github)](https://github.com/0avatar0/dsh-ai-book-shelf)
-[![Release](https://img.shields.io/badge/release-v2.6.1-2ea44f)](https://github.com/0avatar0/dsh-ai-book-shelf/releases/tag/v2.6.1)
+[![Release](https://img.shields.io/badge/release-v2.6.2-2ea44f)](https://github.com/0avatar0/dsh-ai-book-shelf/releases/tag/v2.6.2)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 A persistent DSH Web UI plugin that adds a full-page multi-format reader to the
@@ -11,9 +11,9 @@ comparison.
 
 ## Install
 
-1. Download `dsh-ai-book-shelf-2.6.1.tgz` from the
-   [latest release](https://github.com/0avatar0/dsh-ai-book-shelf/releases/tag/v2.6.1),
-   or install from npm with `dsh-ai-book-shelf@2.6.1`.
+1. Download `dsh-ai-book-shelf-2.6.2.tgz` from the
+   [latest release](https://github.com/0avatar0/dsh-ai-book-shelf/releases/tag/v2.6.2),
+   or install from npm with `dsh-ai-book-shelf@2.6.2`.
 2. In DSH open **Plugins → Add plugin** and choose the downloaded tgz, or paste
    the npm package spec.
 3. Reload the plugin and open **AI 书架 / AI Book Shelf** in the sidebar.
@@ -32,7 +32,7 @@ instructions: [PUBLISHING.md](PUBLISHING.md).
 - **Dossier mode** — a separate dossier library with folders, multi-select
   import (Ctrl/Cmd or Ctrl+A in the file picker), folder-scoped full-text
   search, streamed AI summaries, and folder skills. A Markdown file named
-  `SKILL.md` imported with the dossiers is used as the summary instruction.
+  Creating a folder adds an empty skill you can fill in; an imported `SKILL.md` can replace it, and AI summaries follow it.
 - **Public-domain search** — the **Search books** tab queries Project Gutenberg
   (Gutendex, with the Gutenberg website search as a fallback), a Chinese-only
   Project Gutenberg catalog (`lang=zh`), Chinese Wikisource, Chinese Wikibooks,
