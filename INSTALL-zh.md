@@ -1,6 +1,14 @@
-# DSH AI 书架 2.6.10 — 安装说明
+# DSH AI 书架 2.6.11 — 安装说明
 
-这是一个 DSH Web UI 持久化插件：在侧边栏增加「AI 书架」，支持阅读 EPUB、PDF、TXT、Markdown、HTML、FB2、DOCX，并在选中文字后让 AI 结合上下文解释。
+这是一个 DSH Web UI 持久化插件：在侧边栏增加「AI 书架」，支持多格式阅读、选中文字 AI 解释与追问、线上搜书、论文模式和卷宗模式。
+
+## 功能简介
+
+1. **多格式阅读**：EPUB、PDF、TXT、Markdown、HTML、FB2、DOCX。
+2. **选中即问**：阅读时选中文字，一键获取背景、作者省略的解释并继续追问，无需切换界面。
+3. **全文与线上搜书**：全书搜索；Project Gutenberg、Standard Ebooks、中文维基来源，并支持自定义 OPDS 书源。
+4. **论文模式**：论文翻译、中英对照、论文解释与追问。
+5. **卷宗模式**：一键批量导入文件，按文件夹搜索关键字，AI 总结搜索结果，并支持文件夹 Skill。
 
 从书架目录之外打开或导入的书籍会自动复制到书架目录（默认是第一个工作区，本机为 `D:\BookLib`）；同名同内容复用已有副本，同名不同内容使用 ` (2)` 后缀，不覆盖原文件。
 
@@ -12,15 +20,15 @@
 
 ## 安装到另一台电脑
 
-1. 把 `dsh-ai-book-shelf-2.6.10.tgz` 复制到目标电脑的任意目录。
+1. 把 `dsh-ai-book-shelf-2.6.11.tgz` 复制到目标电脑的任意目录。
    - 建议放在 `Downloads` 这类简单路径下。
    - **不要解压** tgz。
 2. 打开 DSH Web GUI。
 3. 左侧点击 **Plugins / 插件**。
 4. 点击 **Add plugin / 添加插件**，选择 **Install a third-party plugin / 安装第三方插件**。
 5. 在包输入框中粘贴 tgz 的**绝对路径**（不是目录），例如：
-   - Windows：`C:\Users\你的用户名\Downloads\dsh-ai-book-shelf-2.6.10.tgz`
-   - macOS / Linux：`/Users/你的用户名/Downloads/dsh-ai-book-shelf-2.6.10.tgz`
+   - Windows：`C:\Users\你的用户名\Downloads\dsh-ai-book-shelf-2.6.11.tgz`
+   - macOS / Linux：`/Users/你的用户名/Downloads/dsh-ai-book-shelf-2.6.11.tgz`
 6. 点击 **Install / 安装**，等待安装完成。新 bundle 默认启用。
 7. 刷新页面。左侧应出现 **AI 书架** 图标。
 8. 如果没出现，回到 **Plugins** 页面，确认 `@local/dsh-epub-reader` 处于 **On** 状态。
@@ -159,13 +167,13 @@ PDF 解析使用插件内置的 PDF.js，不需要额外安装 npm 依赖。
 `SHA256SUMS.txt` 中有 tgz 的 SHA-256。Windows 可用：
 
 ```powershell
-Get-FileHash .\dsh-ai-book-shelf-2.6.10.tgz -Algorithm SHA256
+Get-FileHash .\dsh-ai-book-shelf-2.6.11.tgz -Algorithm SHA256
 ```
 
 macOS / Linux：
 
 ```bash
-sha256sum dsh-ai-book-shelf-2.6.10.tgz
+sha256sum dsh-ai-book-shelf-2.6.11.tgz
 ```
 
 ## 如果要发布到 npm
@@ -177,4 +185,4 @@ sha256sum dsh-ai-book-shelf-2.6.10.tgz
 1. 注册 <https://www.npmjs.com> 账号并登录（建议开启 2FA）。
 2. 在插件目录执行 `npm login`，再运行 `scripts/publish-npm.sh`。
 3. 脚本会复制并改名为 `dsh-ai-book-shelf` 后发布，不会破坏本机安装。
-4. 其他电脑在 Plugins → Add plugin 中填 `dsh-ai-book-shelf@2.6.10`。
+4. 其他电脑在 Plugins → Add plugin 中填 `dsh-ai-book-shelf@2.6.11`。

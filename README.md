@@ -1,19 +1,31 @@
 # AI Book Shelf / AI 书架
 
 [![GitHub](https://img.shields.io/badge/GitHub-0avatar0%2Fdsh--ai--book--shelf-181717?logo=github)](https://github.com/0avatar0/dsh-ai-book-shelf)
-[![Release](https://img.shields.io/badge/release-v2.6.10-2ea44f)](https://github.com/0avatar0/dsh-ai-book-shelf/releases/tag/v2.6.10)
+[![Release](https://img.shields.io/badge/release-v2.6.11-2ea44f)](https://github.com/0avatar0/dsh-ai-book-shelf/releases/tag/v2.6.11)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 A persistent DSH Web UI plugin that adds a full-page multi-format reader to the
-sidebar and an AI explanation rail for selected text. It also includes a
-separate paper library with paragraph/whole-paper translation and bilingual
-comparison.
+sidebar, an AI explanation rail for selected text, a paper library with
+translation and bilingual comparison, and a dossier library with searchable
+files and AI summaries.
+
+## Highlights
+
+- **Read many formats** — EPUB, PDF, TXT, Markdown, HTML, FB2 and DOCX.
+- **Ask without leaving the page** — select text for background, context,
+  explanations and follow-ups in the right rail.
+- **Search the whole shelf** — full-book `Ctrl+F`, online book search (Project
+  Gutenberg, Standard Ebooks, Chinese Wikimedia sources) and custom OPDS sources.
+- **Paper mode** — paragraph/whole-paper translation, bilingual comparison, AI
+  explanations and follow-ups.
+- **Dossier mode** — folders, Ctrl+A multi-import, keyword search, AI summaries
+  of results, and per-folder skills.
 
 ## Install
 
-1. Download `dsh-ai-book-shelf-2.6.10.tgz` from the
-   [latest release](https://github.com/0avatar0/dsh-ai-book-shelf/releases/tag/v2.6.10),
-   or install from npm with `dsh-ai-book-shelf@2.6.10`.
+1. Download `dsh-ai-book-shelf-2.6.11.tgz` from the
+   [latest release](https://github.com/0avatar0/dsh-ai-book-shelf/releases/tag/v2.6.11),
+   or install from npm with `dsh-ai-book-shelf@2.6.11`.
 2. In DSH open **Plugins → Add plugin** and choose the downloaded tgz, or paste
    the npm package spec.
 3. Reload the plugin and open **AI 书架 / AI Book Shelf** in the sidebar.
@@ -31,8 +43,9 @@ instructions: [PUBLISHING.md](PUBLISHING.md).
   a name collision gets a ` (2)` suffix rather than overwriting anything.
 - **Dossier mode** — a separate dossier library with folders, multi-select
   import (Ctrl/Cmd or Ctrl+A in the file picker), folder-scoped full-text
-  search, streamed AI summaries, and folder skills. A Markdown file named
-  Creating a folder adds an empty skill you can fill in; an imported `SKILL.md` can replace it, and AI summaries follow it.
+  search, streamed AI summaries, and folder skills. Creating a folder adds an
+  empty skill you can fill in; an imported `SKILL.md` can replace it, and AI
+  summaries follow it.
 - **Public-domain search** — the **Search books** tab queries Project Gutenberg
   (Gutendex, with the Gutenberg website search as a fallback), a Chinese-only
   Project Gutenberg catalog (`lang=zh`), Chinese Wikisource, Chinese Wikibooks,

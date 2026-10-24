@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "AI Book Shelf",
-    "description": "AI Book Shelf: read books, papers, and dossiers; full-text search, AI explanations and follow-ups, paper translation and bilingual compare, dossier skills and AI summaries."
+    "description": "AI Book Shelf: read EPUB, PDF, TXT, Markdown, HTML, FB2 and DOCX; select text for one-click background and explanations, then follow up without leaving the page; full-book search, online book search and custom sources; paper mode with translation, bilingual compare, explanations and follow-ups; dossier mode with batch import, keyword search, AI summaries and skills."
   }
 }

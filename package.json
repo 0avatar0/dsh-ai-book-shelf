@@ -1,8 +1,8 @@
 {
   "name": "@local/dsh-epub-reader",
-  "version": "2.6.10",
+  "version": "2.6.11",
   "private": true,
-  "description": "AI Book Shelf: read books, papers, and dossiers in Harness; full-text search, AI explanations and follow-ups, paper translation, bilingual compare, dossier skills and AI summaries.",
+  "description": "AI Book Shelf: read EPUB, PDF, TXT, Markdown, HTML, FB2 and DOCX; select text for one-click background and explanations, then follow up without leaving the page; full-book search, online book search and custom sources; paper mode with translation, bilingual compare, explanations and follow-ups; dossier mode with batch import, keyword search, AI summaries and skills.",
   "keywords": [
     "dsh-plugin",
     "ai-book-shelf",
@@ -16,7 +16,10 @@
     "deepseek-harness",
     "dossier",
     "dossier-mode",
-    "case-file"
+    "case-file",
+    "online-book-search",
+    "custom-opds",
+    "full-text-search"
   ],
   "repository": {
     "type": "git",
