@@ -11,9 +11,9 @@ echo "Packing $NAME@$VERSION ..."
 npm pack --pack-destination "$TMP" >/dev/null
 tar -xzf "$TMP"/*.tgz -C "$TMP"
 
-node - "$TMP/package/package.json" "$TMP/package/cordis.patch.yml" "$NAME" "$VERSION" <<'NODE'
+node - "$TMP/package/package.json" "$TMP/package/cordis.patch.yml" "$TMP/package/client.js" "$NAME" "$VERSION" <<'NODE'
 const fs = require('fs')
-const [file, patchFile, name, version] = process.argv.slice(2)
+const [file, patchFile, clientFile, name, version] = process.argv.slice(2)
 const pkg = JSON.parse(fs.readFileSync(file, 'utf8'))
 pkg.name = name
 pkg.version = version
@@ -26,6 +26,8 @@ const patch = fs.readFileSync(patchFile, 'utf8').replace(
   `name: '${name}'`,
 )
 fs.writeFileSync(patchFile, patch)
+const client = fs.readFileSync(clientFile, 'utf8').replaceAll('@local/dsh-epub-reader', name)
+fs.writeFileSync(clientFile, client)
 NODE
 
 echo "Publishing $NAME@$VERSION ..."
