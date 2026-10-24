@@ -1019,6 +1019,8 @@ window.__ModuleLoader__.load({
 .epub-dossier-skill-empty { margin: 3px 0 0; color: var(--epub-muted); font-size: 8.5px; line-height: 1.5; }
 .epub-dossier-skill.is-empty { color: var(--epub-muted); font-style: italic; font-size: 8px; }
 .epub-dossier-importing { display: flex; align-items: center; gap: 7px; margin: 0 0 9px; padding: 7px 9px; border: 1px solid var(--epub-line); border-radius: 7px; background: var(--epub-surface); color: var(--epub-muted); font-size: 9.5px; }
+.epub-dossier-stop { color: var(--epub-danger); border: 1px solid color-mix(in srgb, var(--epub-danger) 26%, var(--epub-line)); }
+.epub-dossier-stop:hover { background: color-mix(in srgb, var(--epub-danger) 8%, transparent); }
 .epub-dossier-searching { display: inline-flex; align-items: center; gap: 5px; color: var(--epub-muted); font-size: 9px; white-space: nowrap; }
 .epub-dossier-search-count { color: var(--epub-muted); font-size: 9px; white-space: nowrap; }
 .epub-btn-danger { border-color: color-mix(in srgb, var(--epub-danger) 28%, var(--epub-line)); color: var(--epub-danger); background: transparent; }
@@ -1675,6 +1677,13 @@ window.__ModuleLoader__.load({
 
     function IconPlus(props) {
       return iconBase(props ?? {}, [h('path', { key: 'a', d: 'M12 5v14M5 12h14' })])
+    }
+
+    function IconStopCircle(props) {
+      return iconBase(props ?? {}, [
+        h('circle', { key: 'a', cx: 12, cy: 12, r: 8.5 }),
+        h('rect', { key: 'b', x: 9.2, y: 9.2, width: 5.6, height: 5.6, rx: 1, fill: 'currentColor', stroke: 'none' }),
+      ])
     }
 
     function IconFolderPlus(props) {
@@ -3362,15 +3371,12 @@ window.__ModuleLoader__.load({
                   h('input', { value: query, onChange: (event) => setQuery(event.target.value), placeholder: t('dossiers.searchPlaceholder'), 'aria-label': t('dossiers.searchPlaceholder'), type: 'search' }),
                 ),
                 search.busy
-                  ? h(React.Fragment, null,
-                      h('span', { className: 'epub-dossier-searching' }, h(Spinner, null), t('dossiers.searching')),
-                      h('button', { type: 'button', className: 'epub-btn', onClick: stopSearch }, t('dossiers.stopSearch')),
-                    )
+                  ? h('button', { type: 'button', className: 'epub-icon-btn epub-dossier-stop', onClick: stopSearch, title: t('dossiers.stopSearch'), 'aria-label': t('dossiers.stopSearch') }, h(IconStopCircle, { size: 16 }))
                   : search.query !== ''
                     ? h('span', { className: 'epub-dossier-search-count' }, format(t('dossiers.searchCount'), { count: search.results.length }))
                     : null,
-                h('button', { type: 'button', className: 'epub-btn epub-btn-danger', onClick: () => setClearConfirm(true), disabled: documents.length === 0 }, t('dossiers.clear')),
-                h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => void startSummary({ ids: summaryScopeIds(), query: search.query, title: search.query === '' ? t('dossiers.summaryTitle') : t('dossiers.summarySearchTitle') }), disabled: documents.length === 0 && search.results.length === 0 }, h(IconSparkles, { size: 13 }), t('dossiers.summary')),
+                h('button', { type: 'button', className: 'epub-btn epub-btn-danger', onClick: () => setClearConfirm(true), disabled: documents.length === 0 || search.busy }, t('dossiers.clear')),
+                h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => void startSummary({ ids: summaryScopeIds(), query: search.query, title: search.query === '' ? t('dossiers.summaryTitle') : t('dossiers.summarySearchTitle') }), disabled: search.busy || (documents.length === 0 && search.results.length === 0) }, h(IconSparkles, { size: 13 }), t('dossiers.summary')),
               ),
             ),
             h('div', { className: 'epub-dossier-hint' }, t('dossiers.skillHint')),
@@ -3383,7 +3389,7 @@ window.__ModuleLoader__.load({
               : state.status === 'error'
                 ? h(ErrorBanner, { title: t('dossiers.importFailed'), message: state.error, actionLabel: t('papers.retry'), onAction: () => void load() })
                 : search.busy && shown.length === 0
-                  ? h('div', { className: 'epub-paper-empty' }, h(Spinner, null), h('p', null, t('dossiers.searching')))
+                  ? h('div', { className: 'epub-paper-empty' }, h(Spinner, null))
                   : shown.length === 0 && !importing
                   ? h('div', { className: 'epub-paper-empty' }, h(IconFolderPlus, { size: 30 }), h('h3', null, search.query !== '' ? t('dossiers.searchEmpty') : t('dossiers.empty')), h('p', null, search.query !== '' ? t('dossiers.searchEmptyHint') : t('dossiers.emptyHint')))
                   : shown.length > 0

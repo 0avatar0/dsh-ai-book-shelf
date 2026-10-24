@@ -1359,6 +1359,7 @@ function createHandler(ctx, config) {
   const store = new BookStore(MAX_OPEN_BOOKS)
   let catalog = new Map()
   const searchCache = new Map()
+  const dossierTextCache = new Map()
   let annotationQueue = Promise.resolve()
 
   function queueAnnotation(operation) {
@@ -1811,6 +1812,7 @@ function createHandler(ctx, config) {
     const root = dossierRootFor(archiveDir)
     await fs.mkdir(path.join(root, 'files'), { recursive: true })
     await fs.mkdir(path.join(root, 'skills'), { recursive: true })
+    await fs.mkdir(path.join(root, 'index'), { recursive: true })
     return root
   }
 
@@ -1895,8 +1897,25 @@ function createHandler(ctx, config) {
   }
 
   async function dossierTextForItem(item, archiveDir) {
+    if (item.kind === 'skill') return String(item.text ?? '')
+    const cached = dossierTextCache.get(item.id)
+    if (cached !== undefined) return cached
+    const root = await ensureDossierDirs(archiveDir)
+    const indexPath = item.indexPath || path.join(root, 'index', `${item.id}.txt`)
     try {
-      return dossierPlainText(await loadDossierBook(item, archiveDir))
+      const text = await fs.readFile(indexPath, 'utf8')
+      dossierTextCache.set(item.id, text)
+      item.indexPath = indexPath
+      return text
+    } catch (error) {
+      if (error?.code !== 'ENOENT') return ''
+    }
+    try {
+      const text = dossierPlainText(await loadDossierBook(item, archiveDir))
+      await fs.writeFile(indexPath, text, 'utf8')
+      item.indexPath = indexPath
+      dossierTextCache.set(item.id, text)
+      return text
     } catch {
       return ''
     }
@@ -1949,7 +1968,10 @@ function createHandler(ctx, config) {
     book.annotationKey = `sha1-${digest}`
     store.put(book)
     const library = await readDossierLibrary(archiveDir)
-    const item = { id, kind: 'document', title: book.title && book.title !== '未命名书籍' ? book.title : path.basename(name, extension), path: target, folderId, addedAt: Date.now(), size: buffer.length, format: book.format ?? path.extname(name).slice(1).toUpperCase(), pageCount: book.paperPages?.length ?? 0 }
+    const indexPath = path.join(root, 'index', `${id}.txt`)
+    await fs.writeFile(indexPath, text, 'utf8')
+    dossierTextCache.set(id, text)
+    const item = { id, kind: 'document', title: book.title && book.title !== '未命名书籍' ? book.title : path.basename(name, extension), path: target, indexPath, folderId, addedAt: Date.now(), size: buffer.length, format: book.format ?? path.extname(name).slice(1).toUpperCase(), pageCount: book.paperPages?.length ?? 0 }
     library.items = library.items.filter((entry) => entry.id !== id)
     library.items.push(item)
     await writeDossierLibrary(archiveDir, library)
@@ -1967,6 +1989,8 @@ function createHandler(ctx, config) {
     if (typeof item.path === 'string' && item.path !== '') {
       try { await fs.rename(item.path, path.join(trash, `${Date.now()}-${path.basename(item.path)}`)) } catch { /* already gone */ }
     }
+    try { await fs.unlink(path.join(root, 'index', `${item.id}.txt`)) } catch { /* no index */ }
+    dossierTextCache.delete(item.id)
     library.items = library.items.filter((entry) => entry.id !== id)
     store.remove(id)
     await writeDossierLibrary(archiveDir, library)
@@ -2055,6 +2079,8 @@ function createHandler(ctx, config) {
       if (typeof item.path === 'string' && item.path !== '') {
         try { await fs.rename(item.path, path.join(trash, `${Date.now()}-${path.basename(item.path)}`)) } catch { /* already gone */ }
       }
+      try { await fs.unlink(path.join(root, 'index', `${item.id}.txt`)) } catch { /* no index */ }
+      dossierTextCache.delete(item.id)
       store.remove(item.id)
     }
     const ids = new Set(targets.map((item) => item.id))
@@ -2078,8 +2104,8 @@ function createHandler(ctx, config) {
     const route = resolveModelRoute(ctx, config)
     if (route === undefined) throw new HttpError(503, 'NO_MODEL', '还没有选择模型')
     const sections = []
-    for (const item of selected.slice(0, 30)) {
-      const text = (await dossierTextForItem(item, archiveDir)).slice(0, 12000)
+    for (const item of selected.slice(0, 40)) {
+      const text = (await dossierTextForItem(item, archiveDir)).slice(0, 6000)
       if (text.trim() !== '') sections.push(`【${item.title}】\n${text}`)
     }
     if (sections.length === 0) throw new HttpError(422, 'DOSSIER_NO_TEXT', '卷宗文件没有可总结的文字')
@@ -2099,7 +2125,7 @@ function createHandler(ctx, config) {
     const controller = new AbortController()
     let closed = false
     res.on('close', () => { if (!res.writableEnded) { closed = true; controller.abort() } })
-    const request = { system, messages: [{ role: 'user', content: [{ type: 'text', text: prompt.slice(0, 120000) }] }], signal: controller.signal }
+    const request = { system, messages: [{ role: 'user', content: [{ type: 'text', text: prompt.slice(0, 60000) }] }], signal: controller.signal }
     const call = { provider: route.provider, model: route.model, temperature: 0.2, maxTokens: 1800 }
     const stream = typeof llm.prepareCall === 'function'
       ? await (async () => { const prepared = await llm.prepareCall(call, controller.signal); return prepared.stream({ ...prepared.config, ...request }) })()
