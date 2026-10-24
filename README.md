@@ -12,8 +12,10 @@ comparison.
 ## Install
 
 1. Download `dsh-ai-book-shelf-2.5.0.tgz` from the
-   [latest release](https://github.com/0avatar0/dsh-ai-book-shelf/releases/tag/v2.5.0).
-2. In DSH open **Plugins → Add plugin** and choose the downloaded tgz.
+   [latest release](https://github.com/0avatar0/dsh-ai-book-shelf/releases/tag/v2.5.0),
+   or install from npm with `dsh-ai-book-shelf@2.5.0`.
+2. In DSH open **Plugins → Add plugin** and choose the downloaded tgz, or paste
+   the npm package spec.
 3. Reload the plugin and open **AI 书架 / AI Book Shelf** in the sidebar.
 
 Chinese step-by-step guide: [INSTALL-zh.md](INSTALL-zh.md). Publishing and npm

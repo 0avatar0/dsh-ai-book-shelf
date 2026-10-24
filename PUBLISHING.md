@@ -8,6 +8,7 @@
   - `dsh-ai-book-shelf-2.5.0.tgz`：DSH 插件安装包
   - `dsh-ai-book-shelf-2.5.0.zip`：包含 tgz、中文安装说明和 SHA-256
 - 当前插件版本：`2.5.0`
+- npm 公共包：<https://www.npmjs.com/package/dsh-ai-book-shelf>（`latest` = 2.5.0）
 
 ## 一、发布到 GitHub（已经完成，后续更新用）
 
