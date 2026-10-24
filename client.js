@@ -153,7 +153,7 @@ window.__ModuleLoader__.load({
       'dossiers.stopSearch': '停止搜索',
       'dossiers.searchCount': '找到 {count} 个',
       'dossiers.clear': '清空卷宗',
-      'dossiers.clearTitle': '清空当前卷宗？',
+      'dossiers.clearTitle': '清空「{name}」卷宗？',
       'dossiers.clearHint': '将把当前范围内的 {count} 个卷宗文件移到回收目录；文件夹和 Skill 会保留。',
       'dossiers.clearConfirm': '确认清空',
       'dossiers.open': '打开阅读',
@@ -401,7 +401,7 @@ window.__ModuleLoader__.load({
       'dossiers.stopSearch': 'Stop search',
       'dossiers.searchCount': '{count} found',
       'dossiers.clear': 'Clear dossiers',
-      'dossiers.clearTitle': 'Clear this dossier folder?',
+      'dossiers.clearTitle': 'Clear "{name}"?',
       'dossiers.clearHint': 'Move {count} dossier files in the current scope to the trash; folders and skills are kept.',
       'dossiers.clearConfirm': 'Clear',
       'dossiers.open': 'Open',
@@ -3051,7 +3051,7 @@ window.__ModuleLoader__.load({
       const [contextMenu, setContextMenu] = React.useState(null)
       const [importFolderId, setImportFolderId] = React.useState(null)
       const [expandedFolders, setExpandedFolders] = React.useState(() => new Set())
-      const [clearConfirm, setClearConfirm] = React.useState(false)
+      const [clearConfirm, setClearConfirm] = React.useState(null)
       const [skillEditor, setSkillEditor] = React.useState(null)
       const [summary, setSummary] = React.useState({ open: false, status: 'idle', text: '', title: '', error: '' })
       const fileRef = React.useRef(null)
@@ -3302,10 +3302,11 @@ window.__ModuleLoader__.load({
         setSummary({ open: false, status: 'idle', text: '', title: '', error: '' })
       }
 
-      async function clearCurrentFolder() {
+      async function clearFolder() {
+        if (clearConfirm === null) return
         try {
-          await apiPost('/dossiers/clear', { folderId: activeFolder === 'all' ? 'all' : folderId })
-          setClearConfirm(false)
+          await apiPost('/dossiers/clear', { folderId: clearConfirm.scope })
+          setClearConfirm(null)
           stopSearch()
           setSearch({ busy: false, results: [], error: '', query: '' })
           setQuery('')
@@ -3375,7 +3376,6 @@ window.__ModuleLoader__.load({
                   : search.query !== ''
                     ? h('span', { className: 'epub-dossier-search-count' }, format(t('dossiers.searchCount'), { count: search.results.length }))
                     : null,
-                h('button', { type: 'button', className: 'epub-btn epub-btn-danger', onClick: () => setClearConfirm(true), disabled: documents.length === 0 || search.busy }, t('dossiers.clear')),
                 h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => void startSummary({ ids: summaryScopeIds(), query: search.query, title: search.query === '' ? t('dossiers.summaryTitle') : t('dossiers.summarySearchTitle') }), disabled: search.busy || (documents.length === 0 && search.results.length === 0) }, h(IconSparkles, { size: 13 }), t('dossiers.summary')),
               ),
             ),
@@ -3420,6 +3420,19 @@ window.__ModuleLoader__.load({
               contextMenu.kind === 'folder'
                 ? h('button', { type: 'button', className: 'epub-context-item', onClick: () => { const entry = state.folders.find((value) => value.id === contextMenu.folderId); setContextMenu(null); if (entry !== undefined) openDialog('folderRename', entry.name, entry.id) } }, t('dossiers.renameFolder'))
                 : null,
+              contextMenu.kind === 'folder'
+                ? h('button', {
+                    type: 'button',
+                    className: 'epub-context-item is-danger',
+                    onClick: () => {
+                      const id = contextMenu.folderId
+                      const entry = state.folders.find((value) => value.id === id)
+                      const count = state.items.filter((item) => item.kind === 'document' && item.folderId === id).length
+                      setContextMenu(null)
+                      setClearConfirm({ scope: id, count, label: entry?.name ?? t('dossiers.title') })
+                    },
+                  }, t('dossiers.clear'))
+                : null,
               contextMenu.kind === 'item'
                 ? (() => {
                     const item = state.items.find((entry) => entry.id === contextMenu.itemId)
@@ -3461,14 +3474,14 @@ window.__ModuleLoader__.load({
               ),
             )
           : null,
-        clearConfirm
-          ? h('div', { className: 'epub-dialog-backdrop', onMouseDown: (event) => { if (event.target === event.currentTarget) setClearConfirm(false) } },
+        clearConfirm !== null
+          ? h('div', { className: 'epub-dialog-backdrop', onMouseDown: (event) => { if (event.target === event.currentTarget) setClearConfirm(null) } },
               h('div', { className: 'epub-dialog' },
-                h('h3', null, t('dossiers.clearTitle')),
-                h('p', { className: 'epub-dialog-message' }, format(t('dossiers.clearHint'), { count: documents.length })),
+                h('h3', null, format(t('dossiers.clearTitle'), { name: clearConfirm.label })),
+                h('p', { className: 'epub-dialog-message' }, format(t('dossiers.clearHint'), { count: clearConfirm.count })),
                 h('div', { className: 'epub-dialog-actions' },
-                  h('button', { type: 'button', className: 'epub-btn', onClick: () => setClearConfirm(false) }, t('papers.cancel')),
-                  h('button', { type: 'button', className: 'epub-btn epub-btn-danger', onClick: () => void clearCurrentFolder() }, t('dossiers.clearConfirm')),
+                  h('button', { type: 'button', className: 'epub-btn', onClick: () => setClearConfirm(null) }, t('papers.cancel')),
+                  h('button', { type: 'button', className: 'epub-btn epub-btn-danger', onClick: () => void clearFolder() }, t('dossiers.clearConfirm')),
                 ),
               ),
             )
