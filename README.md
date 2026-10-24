@@ -1,7 +1,7 @@
-﻿# AI Book Shelf / AI 涔︽灦
+# AI Book Shelf / AI 书架
 
 [![GitHub](https://img.shields.io/badge/GitHub-0avatar0%2Fdsh--ai--book--shelf-181717?logo=github)](https://github.com/0avatar0/dsh-ai-book-shelf)
-[![Release](https://img.shields.io/badge/release-v2.5.2-2ea44f)](https://github.com/0avatar0/dsh-ai-book-shelf/releases/tag/v2.5.2)
+[![Release](https://img.shields.io/badge/release-v2.6.0-2ea44f)](https://github.com/0avatar0/dsh-ai-book-shelf/releases/tag/v2.6.0)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 A persistent DSH Web UI plugin that adds a full-page multi-format reader to the
@@ -11,27 +11,29 @@ comparison.
 
 ## Install
 
-1. Download `dsh-ai-book-shelf-2.5.2.tgz` from the
-   [latest release](https://github.com/0avatar0/dsh-ai-book-shelf/releases/tag/v2.5.2),
-   or install from npm with `dsh-ai-book-shelf@2.5.2`.
-2. In DSH open **Plugins 鈫?Add plugin** and choose the downloaded tgz, or paste
+1. Download `dsh-ai-book-shelf-2.6.0.tgz` from the
+   [latest release](https://github.com/0avatar0/dsh-ai-book-shelf/releases/tag/v2.6.0),
+   or install from npm with `dsh-ai-book-shelf@2.6.0`.
+2. In DSH open **Plugins → Add plugin** and choose the downloaded tgz, or paste
    the npm package spec.
-3. DSH installs a third-party bundle disabled by default. In **Plugins**, switch
-   `dsh-ai-book-shelf` to **On** once; later updates keep it enabled.
-4. Refresh the page and open **AI 涔︽灦 / AI Book Shelf** in the sidebar.
+3. Reload the plugin and open **AI 书架 / AI Book Shelf** in the sidebar.
 
 Chinese step-by-step guide: [INSTALL-zh.md](INSTALL-zh.md). Publishing and npm
 instructions: [PUBLISHING.md](PUBLISHING.md).
 
 ## What it does
 
-- **Shelf** 鈥?scans the archive shelf (the first registered workspace by
+- **Shelf** — scans the archive shelf (the first registered workspace by
   default, which is `D:\BookLib` on this deployment), plus any extra
   `libraryDirs`, for supported book files.
-- **Copies external books** 鈥?a book opened or imported from outside the
+- **Copies external books** — a book opened or imported from outside the
   archive shelf is copied into `archiveDir` first. Identical files are reused;
   a name collision gets a ` (2)` suffix rather than overwriting anything.
-- **Public-domain search** 鈥?the **Search books** tab queries Project Gutenberg
+- **Dossier mode** — a separate dossier library with folders, multi-select
+  import (Ctrl/Cmd or Ctrl+A in the file picker), folder-scoped full-text
+  search, streamed AI summaries, and folder skills. A Markdown file named
+  `SKILL.md` imported with the dossiers is used as the summary instruction.
+- **Public-domain search** — the **Search books** tab queries Project Gutenberg
   (Gutendex, with the Gutenberg website search as a fallback), a Chinese-only
   Project Gutenberg catalog (`lang=zh`), Chinese Wikisource, Chinese Wikibooks,
   and Standard Ebooks, then saves the chosen book (EPUB, or an HTML book for
@@ -50,24 +52,24 @@ instructions: [PUBLISHING.md](PUBLISHING.md).
   can be added with the **+** button. The built-in Chinese catalogs cover
   traditional Chinese Gutenberg titles and Wikisource; other catalogs are
   mostly English.
-- **Reader** 鈥?parses the book into chapters, sanitizes HTML, and renders a
+- **Reader** — parses the book into chapters, sanitizes HTML, and renders a
   comfortable serif reading page with per-book progress. EPUB keeps its OPF
   spine, headings, lists, tables, images and TOC; PDF/Text/Markdown/HTML/FB2/
   DOCX are normalized into readable chapters.
-- **Ask while selecting** 鈥?the floating selection bar contains a question
-  field to the left of **瑙ｉ噴**. Type a specific question and press Enter or
-  **瑙ｉ噴**, or leave it blank for a direct explanation. The question is sent
+- **Ask while selecting** — the floating selection bar contains a question
+  field to the left of **解释**. Type a specific question and press Enter or
+  **解释**, or leave it blank for a direct explanation. The question is sent
   together with the book, chapter, selection, and nearby context; the right
   rail opens and streams the answer.
-- **Follow-ups** 鈥?keep the whole Q&A thread in the panel and send the previous
+- **Follow-ups** — keep the whole Q&A thread in the panel and send the previous
   turns to the model, so pronouns and earlier details stay in context. You can
   stop the stream, copy the answer, or use quick asks (translate / example /
   background).
-- **Per-book annotations** 鈥?every completed explanation and its follow-ups are
+- **Per-book annotations** — every completed explanation and its follow-ups are
   saved on the Host under the archive directory. Opening a book opens the right
   annotation rail with that book's saved records; click a record to reopen its
   Q&A thread and continue asking. Records survive browser reloads and restarts.
-- **Paper mode** 鈥?a separate paper library for English PDFs, with virtual
+- **Paper mode** — a separate paper library for English PDFs, with virtual
   folders (create, drag papers in, rename), paragraph-level translation into a
   JSON translation file, manual correction, retranslation, whole-paper
   translation saved as a new Chinese paper, and a bilingual compare view.
@@ -89,17 +91,17 @@ instructions: [PUBLISHING.md](PUBLISHING.md).
   translation box is resizable from its bottom edge, auto-fits its text on
   first open, remembers its height/collapsed state, and can be collapsed
   individually or all at once. Translation text supports AI explanation.
-- **Zoom** 鈥?Ctrl/Cmd + mouse wheel changes the reading font size in both books
+- **Zoom** — Ctrl/Cmd + mouse wheel changes the reading font size in both books
   and papers; the paper compare view also zooms its source/translation text.
-- **AI panels** 鈥?explanations are expanded by default and can be collapsed
-  individually or with one 鈥淐ollapse all鈥?action.
-- **Find in book** 鈥?`Ctrl/Cmd+F` opens a full-book search across every
+- **AI panels** — explanations are expanded by default and can be collapsed
+  individually or with one “Collapse all” action.
+- **Find in book** — `Ctrl/Cmd+F` opens a full-book search across every
   chapter, including PDF/HTML/DOCX books. Results show chapter, occurrence and
   a text snippet; clicking one jumps to the chapter and highlights every match.
   The reader toolbar shows the shortcut next to the search button. Simplified
-  Chinese queries also match traditional text (`闄堟枃榫檂 finds `闄虫枃榫峘).
-- **Keyboard** 鈥?`Ctrl/Cmd+Shift+E` explains the current selection,
-  `Alt+鈫恅 / `Alt+鈫抈 move between chapters, `Esc` closes search/rail.
+  Chinese queries also match traditional text (`陈文龙` finds `陳文龍`).
+- **Keyboard** — `Ctrl/Cmd+Shift+E` explains the current selection,
+  `Alt+←` / `Alt+→` move between chapters, `Esc` closes search/rail.
 
 ## Supported formats
 
@@ -111,7 +113,7 @@ instructions: [PUBLISHING.md](PUBLISHING.md).
 | `.md` / `.markdown` | Headings, paragraphs, lists, quotes, code blocks |
 | `.html` / `.htm` / `.xhtml` | Sanitized HTML body |
 | `.fb2` | FictionBook XML |
-| `.docx` | Word paragraphs and Heading 1鈥? chapters |
+| `.docx` | Word paragraphs and Heading 1–3 chapters |
 | `.mobi` / `.azw3` / `.azw` | Convert to EPUB or PDF first (for example with Calibre) |
 
 PDF extraction uses a vendored PDF.js runtime under `vendor/pdfjs/`; the package
@@ -176,4 +178,3 @@ explanations over SSE.
 Plugin code is released under the [MIT License](LICENSE). The bundled PDF.js
 runtime keeps its own Apache-2.0 license under `vendor/pdfjs/LICENSE`; bundled
 fonts keep the licenses in `vendor/pdfjs/standard_fonts/`.
-

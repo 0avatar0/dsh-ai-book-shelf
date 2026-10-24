@@ -119,6 +119,37 @@ window.__ModuleLoader__.load({
       'library.openLocal': '打开本地书籍',
       'library.dragHint': '也可以把书籍文件拖到这里',
       'papers.mode': '论文模式',
+      'papers.close': '关闭',
+      'dossiers.mode': '卷宗模式',
+      'dossiers.title': '卷宗库',
+      'dossiers.subtitle': '按文件夹整理卷宗，支持全选导入、全文搜索、AI 总结和文件夹 Skill。',
+      'dossiers.import': '导入卷宗',
+      'dossiers.importing': '正在导入卷宗…',
+      'dossiers.importFailed': '卷宗导入失败',
+      'dossiers.newFolder': '新建卷宗文件夹',
+      'dossiers.all': '全部卷宗',
+      'dossiers.root': '未分类',
+      'dossiers.searchPlaceholder': '搜索当前文件夹内的卷宗',
+      'dossiers.searchEmpty': '没有找到匹配的卷宗',
+      'dossiers.searchEmptyHint': '试试更短的关键词，或切换到“全部卷宗”。',
+      'dossiers.empty': '这个卷宗文件夹还是空的',
+      'dossiers.emptyHint': '导入卷宗文件；可以按住 Ctrl / Cmd 或按 Ctrl+A 全选多个文件。文件名正好是 SKILL.md 的 Markdown 会作为该文件夹的 Skill。',
+      'dossiers.skillHint': '提示：一次可全选多个文件；把 SKILL.md 和卷宗一起导入，AI 总结时会优先遵循该 Skill。',
+      'dossiers.skills': '文件夹 Skill',
+      'dossiers.summary': 'AI 总结',
+      'dossiers.summaryTitle': 'AI 卷宗总结',
+      'dossiers.summarySearchTitle': 'AI 总结搜索结果',
+      'dossiers.summarizing': '正在分析卷宗…',
+      'dossiers.open': '打开阅读',
+      'dossiers.openHint': '点击打开阅读',
+      'dossiers.openFailed': '卷宗打开失败',
+      'dossiers.rename': '重命名卷宗',
+      'dossiers.renameFolder': '重命名文件夹',
+      'dossiers.delete': '删除卷宗',
+      'dossiers.confirmDelete': '确认删除？',
+      'dossiers.importHere': '导入卷宗到此文件夹',
+      'dossiers.namePlaceholder': '输入名称',
+      'dossiers.stop': '停止总结',
       'papers.title': '论文库',
       'papers.subtitle': '英文论文翻译、逐段校正与中英对照',
       'papers.storageHint': '论文副本自动保存在 .epub-reader/papers，与书籍目录分开。',
@@ -320,6 +351,37 @@ window.__ModuleLoader__.load({
       'library.openLocal': 'Open local book',
       'library.dragHint': 'You can also drop a book file here',
       'papers.mode': 'Papers',
+      'papers.close': 'Close',
+      'dossiers.mode': 'Dossiers',
+      'dossiers.title': 'Dossier library',
+      'dossiers.subtitle': 'Organize dossiers by folder, with multi-select import, full-text search, AI summaries and folder skills.',
+      'dossiers.import': 'Import dossiers',
+      'dossiers.importing': 'Importing dossiers…',
+      'dossiers.importFailed': 'Dossier import failed',
+      'dossiers.newFolder': 'New dossier folder',
+      'dossiers.all': 'All dossiers',
+      'dossiers.root': 'Unsorted',
+      'dossiers.searchPlaceholder': 'Search this folder',
+      'dossiers.searchEmpty': 'No matching dossiers',
+      'dossiers.searchEmptyHint': 'Try a shorter keyword or switch to All dossiers.',
+      'dossiers.empty': 'This dossier folder is empty',
+      'dossiers.emptyHint': 'Import dossier files; hold Ctrl / Cmd or press Ctrl+A to select many. A Markdown file named SKILL.md becomes a folder skill.',
+      'dossiers.skillHint': 'Tip: select many files at once; import SKILL.md with the dossiers and AI summaries will follow it.',
+      'dossiers.skills': 'Folder skills',
+      'dossiers.summary': 'AI summary',
+      'dossiers.summaryTitle': 'AI dossier summary',
+      'dossiers.summarySearchTitle': 'AI search summary',
+      'dossiers.summarizing': 'Analyzing dossiers…',
+      'dossiers.open': 'Open',
+      'dossiers.openHint': 'Click to open',
+      'dossiers.openFailed': 'Could not open dossier',
+      'dossiers.rename': 'Rename dossier',
+      'dossiers.renameFolder': 'Rename folder',
+      'dossiers.delete': 'Delete dossier',
+      'dossiers.confirmDelete': 'Confirm delete?',
+      'dossiers.importHere': 'Import dossiers into this folder',
+      'dossiers.namePlaceholder': 'Name',
+      'dossiers.stop': 'Stop summary',
       'papers.title': 'Paper library',
       'papers.subtitle': 'Translate English papers, correct paragraphs, compare side by side',
       'papers.storageHint': 'Paper copies are stored in .epub-reader/papers, separate from books.',
@@ -902,6 +964,28 @@ window.__ModuleLoader__.load({
 .epub-dialog-input { width: 100%; height: 34px; padding: 0 9px; border: 1px solid var(--epub-line); border-radius: 7px; outline: 0; background: var(--dsw-alias-bg-base); color: var(--epub-text); font-size: 11px; }
 .epub-dialog-input:focus { border-color: color-mix(in srgb, var(--epub-accent) 45%, var(--epub-line)); }
 .epub-dialog-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 12px; }
+.epub-dossier-actions { display: flex; align-items: center; gap: 7px; margin-left: auto; }
+.epub-dossier-search { display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 8px; border: 1px solid var(--epub-line); border-radius: 7px; background: var(--dsw-alias-bg-base); color: var(--epub-muted); }
+.epub-dossier-search input { width: 190px; border: 0; outline: 0; background: transparent; color: var(--epub-text); font-size: 10px; }
+.epub-dossier-hint { margin: 0 0 10px; color: var(--epub-muted); font-size: 9px; line-height: 1.5; }
+.epub-dossier-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 9px; }
+.epub-dossier-card { padding: 12px; border: 1px solid var(--epub-line); border-radius: 10px; background: var(--epub-surface); cursor: pointer; min-width: 0; }
+.epub-dossier-card:hover { border-color: var(--epub-line-strong); background: var(--epub-surface-2); }
+.epub-dossier-type { display: inline-block; margin-bottom: 6px; padding: 2px 5px; border-radius: 4px; background: color-mix(in srgb, var(--epub-accent) 10%, transparent); color: var(--epub-accent); font-size: 8px; font-weight: 700; letter-spacing: .04em; }
+.epub-dossier-card h3 { margin: 0; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.epub-dossier-card p { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin: 6px 0 9px; color: var(--epub-muted); font-size: 9.5px; line-height: 1.55; overflow-wrap: anywhere; }
+.epub-dossier-meta { display: flex; justify-content: space-between; gap: 6px; color: var(--epub-muted); font-size: 8.5px; }
+.epub-dossier-skills { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--epub-line); }
+.epub-dossier-skills-head { margin-bottom: 5px; color: var(--epub-muted); font-size: 8.5px; text-transform: uppercase; letter-spacing: .06em; }
+.epub-dossier-skill { display: flex; align-items: center; gap: 4px; width: 100%; margin: 2px 0; padding: 4px 5px; border: 0; border-radius: 5px; background: transparent; color: var(--epub-text); font-size: 9px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.epub-dossier-skill:hover { background: var(--epub-surface-2); }
+.epub-dossier-summary-backdrop { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: 20px; background: rgba(0,0,0,.38); }
+.epub-dossier-summary { display: flex; flex-direction: column; width: min(680px, 100%); max-height: min(78vh, 720px); border: 1px solid var(--epub-line-strong); border-radius: 14px; background: var(--epub-surface); box-shadow: 0 24px 70px -20px rgba(0,0,0,.65); overflow: hidden; }
+.epub-dossier-summary header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--epub-line); }
+.epub-dossier-summary h3 { margin: 2px 0 0; font-size: 15px; }
+.epub-dossier-summary-actions { display: flex; align-items: center; gap: 5px; }
+.epub-dossier-summary-body { flex: 1; overflow: auto; padding: 16px; color: var(--epub-text); font-family: var(--epub-serif); font-size: 13px; line-height: 1.8; white-space: pre-wrap; }
+.epub-dossier-summary-error { margin: 0; padding: 10px 16px 0; color: var(--epub-danger); font-size: 10px; }
 .epub-paper-compare { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
 .epub-paper-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
 .epub-paper-body.ai-open { grid-template-columns: minmax(0, 1fr) 372px; }
@@ -946,6 +1030,12 @@ window.__ModuleLoader__.load({
 .epub-paper-ai-collapsed { padding: 8px 10px; color: var(--epub-muted); font-size: 9.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 760px) {
   .epub-papers-body { grid-template-columns: 1fr; }
+  .epub-paper-main-head { flex-wrap: wrap; }
+  .epub-dossier-actions { width: 100%; margin-left: 0; }
+  .epub-dossier-search { flex: 1; }
+  .epub-dossier-search input { width: 100%; min-width: 0; }
+  .epub-dossier-grid { grid-template-columns: 1fr; }
+  .epub-dossier-summary { max-height: 88vh; }
   .epub-paper-folders { display: flex; gap: 4px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--epub-line); }
   .epub-paper-folder-wrap { flex: none; }
   .epub-paper-folder-top { flex: none; }
@@ -1725,7 +1815,7 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function Library({ ctx, t, onOpenBook, opening, onLocalBook, onPapers }) {
+    function Library({ ctx, t, onOpenBook, opening, onLocalBook, onPapers, onDossiers }) {
       const [state, setState] = React.useState({ status: 'loading', books: [], roots: [], error: '' })
       const [query, setQuery] = React.useState('')
       const [mode, setMode] = React.useState(() => {
@@ -1800,43 +1890,59 @@ window.__ModuleLoader__.load({
       }
       const progressMap = React.useMemo(() => readProgressMap(), [state.books])
 
-      async function importFile(file) {
-        if (file === undefined || file === null) return
-        const extension = file.name.includes('.') ? `.${file.name.split('.').pop().toLowerCase()}` : ''
-        if (CONVERSION_EXTENSIONS.has(extension)) {
-          setImportError(t('library.conversionRequired'))
-          return
-        }
-        if (!BOOK_EXTENSIONS.has(extension)) {
-          setImportError(t('library.importFailed') + '：' + file.name)
-          return
-        }
+      async function importFiles(files) {
+        const list = Array.from(files ?? []).filter((file) => file !== null && file !== undefined)
+        if (list.length === 0) return
         setImporting(true)
         setImportError('')
+        const failures = []
+        let last = null
         try {
-          const buffer = await file.arrayBuffer()
-          const response = await fetch(`${API}/import`, {
-            method: 'POST',
-            headers: {
-              'content-type': 'application/epub+zip',
-              'x-book-name': encodeURIComponent(file.name),
-            },
-            body: buffer,
-          })
-          const data = await responseJson(response)
-          if (data !== null && data.book !== undefined) {
-            onLocalBook(data.book, {
-              copied: data.copied === true,
-              created: data.created === true,
-              copyPath: typeof data.copyPath === 'string' ? data.copyPath : '',
-            })
+          for (const file of list) {
+            const extension = file.name.includes('.') ? `.${file.name.split('.').pop().toLowerCase()}` : ''
+            if (CONVERSION_EXTENSIONS.has(extension)) {
+              failures.push(`${file.name}：${t('library.conversionRequired')}`)
+              continue
+            }
+            if (!BOOK_EXTENSIONS.has(extension)) {
+              failures.push(`${file.name}：${t('library.importFailed')}`)
+              continue
+            }
+            try {
+              const buffer = await file.arrayBuffer()
+              const response = await fetch(`${API}/import`, {
+                method: 'POST',
+                headers: {
+                  'content-type': 'application/epub+zip',
+                  'x-book-name': encodeURIComponent(file.name),
+                },
+                body: buffer,
+              })
+              const data = await responseJson(response)
+              if (data !== null && data.book !== undefined) {
+                last = {
+                  book: data.book,
+                  info: {
+                    copied: data.copied === true,
+                    created: data.created === true,
+                    copyPath: typeof data.copyPath === 'string' ? data.copyPath : '',
+                  },
+                }
+              }
+            } catch (error) {
+              failures.push(`${file.name}：${error instanceof Error ? error.message : String(error)}`)
+            }
           }
-        } catch (error) {
-          setImportError(`${t('library.importFailed')}：${error instanceof Error ? error.message : String(error)}`)
+          if (last !== null) onLocalBook(last.book, last.info)
+          if (failures.length > 0) setImportError(failures.join('\n'))
         } finally {
           setImporting(false)
           if (fileRef.current !== null) fileRef.current.value = ''
         }
+      }
+
+      async function importFile(file) {
+        await importFiles([file])
       }
 
       function saveSourcePrefs(next) {
@@ -1987,7 +2093,7 @@ window.__ModuleLoader__.load({
 
       return h(
         'div',
-        { className: 'epub-library', onDragOver: (event) => { event.preventDefault(); setDragOver(true) }, onDragLeave: () => setDragOver(false), onDrop: (event) => { event.preventDefault(); setDragOver(false); void importFile(event.dataTransfer.files?.[0]) } },
+        { className: 'epub-library', onDragOver: (event) => { event.preventDefault(); setDragOver(true) }, onDragLeave: () => setDragOver(false), onDrop: (event) => { event.preventDefault(); setDragOver(false); void importFiles(event.dataTransfer.files) } },
         h(
           'div',
           { className: 'epub-library-inner' },
@@ -2033,8 +2139,9 @@ window.__ModuleLoader__.load({
                 ref: fileRef,
                 type: 'file',
                 accept: BOOK_ACCEPT,
+                multiple: true,
                 style: { display: 'none' },
-                onChange: (event) => { void importFile(event.target.files?.[0]) },
+                onChange: (event) => { void importFiles(event.target.files); event.target.value = '' },
               }),
             ),
           ),
@@ -2048,6 +2155,7 @@ window.__ModuleLoader__.load({
               h('button', { type: 'button', role: 'tab', 'aria-selected': mode === 'online', className: cn('epub-mode-tab', mode === 'online' && 'is-active'), onClick: () => switchLibraryMode('online') }, t('library.onlineTab')),
             ),
             h('button', { type: 'button', className: 'epub-mode-paper', onClick: onPapers }, h(IconList, { size: 14 }), t('papers.mode')),
+            h('button', { type: 'button', className: 'epub-mode-paper', onClick: onDossiers }, h(IconFolderPlus, { size: 14 }), t('dossiers.mode')),
           ),
           mode === 'online'
             ? h(
@@ -2684,7 +2792,7 @@ window.__ModuleLoader__.load({
         setDragOver('')
       }
 
-      async function importPdf(file) {
+      async function importPdf(file, openAfter = true) {
         if (file === undefined) return
         setImporting(true)
         setImportError('')
@@ -2696,12 +2804,40 @@ window.__ModuleLoader__.load({
           })
           setImportFolderId(null)
           await load()
-          if (data?.paper?.id !== undefined) onRead(data.paper.id)
+          if (openAfter && data?.paper?.id !== undefined) onRead(data.paper.id)
         } catch (error) {
           setImportError(error instanceof Error ? error.message : String(error))
         } finally {
           setImporting(false)
           setImportFolderId(null)
+        }
+      }
+
+      async function importPdfs(files) {
+        const list = Array.from(files ?? []).filter((file) => file !== null && file !== undefined)
+        if (list.length === 0) return
+        if (list.length === 1) { await importPdf(list[0]); return }
+        setImporting(true)
+        setImportError('')
+        const folderId = importFolderId !== null ? importFolderId : activeFolder === 'all' || activeFolder === 'root' ? '' : activeFolder
+        const failures = []
+        try {
+          for (const file of list) {
+            if (!file.name.toLowerCase().endsWith('.pdf')) { failures.push(`${file.name}：只支持 PDF`); continue }
+            try {
+              await apiUpload('/papers/import', file, {
+                'x-paper-name': encodeURIComponent(file.name),
+                'x-paper-folder': folderId,
+              })
+            } catch (error) {
+              failures.push(`${file.name}：${error instanceof Error ? error.message : String(error)}`)
+            }
+          }
+          await load()
+        } finally {
+          setImporting(false)
+          setImportFolderId(null)
+          if (failures.length > 0) setImportError(failures.join('\n'))
         }
       }
 
@@ -2728,7 +2864,7 @@ window.__ModuleLoader__.load({
           ),
           h('div', { className: 'epub-papers-head-actions' },
             h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => { setImportFolderId(null); fileRef.current?.click() } }, h(IconUpload, { size: 14 }), t('papers.import')),
-            h('input', { ref: fileRef, type: 'file', accept: '.pdf,application/pdf', style: { display: 'none' }, onChange: (event) => { void importPdf(event.target.files?.[0]); event.target.value = '' } }),
+            h('input', { ref: fileRef, type: 'file', accept: '.pdf,application/pdf', multiple: true, style: { display: 'none' }, onChange: (event) => { void importPdfs(event.target.files); event.target.value = '' } }),
           ),
         ),
         importError !== '' ? h(ErrorBanner, { title: t('papers.importFailed'), message: importError, actionLabel: t('papers.retry'), onAction: () => setImportError('') }) : null,
@@ -2839,6 +2975,293 @@ window.__ModuleLoader__.load({
             )
           : null,
         importing ? h('div', { className: 'epub-importing' }, h('div', { className: 'epub-importing-card' }, h(Spinner, null), h('div', null, h('strong', null, t('papers.importing')), h('span', null, t('papers.subtitle'))))) : null,
+      )
+    }
+
+    function DossierLibrary({ t, onBack, onRead }) {
+      const [state, setState] = React.useState({ status: 'loading', folders: [], items: [], error: '' })
+      const [activeFolder, setActiveFolder] = React.useState('all')
+      const [query, setQuery] = React.useState('')
+      const [search, setSearch] = React.useState({ busy: false, results: [], error: '', query: '' })
+      const [importing, setImporting] = React.useState(false)
+      const [error, setError] = React.useState('')
+      const [dialog, setDialog] = React.useState(null)
+      const [contextMenu, setContextMenu] = React.useState(null)
+      const [importFolderId, setImportFolderId] = React.useState(null)
+      const [summary, setSummary] = React.useState({ open: false, status: 'idle', text: '', title: '', error: '' })
+      const fileRef = React.useRef(null)
+      const summaryAbort = React.useRef(null)
+
+      const load = React.useCallback(async () => {
+        setState((current) => ({ ...current, status: current.items.length === 0 ? 'loading' : current.status, error: '' }))
+        try {
+          const data = await apiGet('/dossiers')
+          setState({ status: 'ready', folders: data.folders ?? [], items: data.items ?? [], error: '' })
+        } catch (reason) {
+          setState({ status: 'error', folders: [], items: [], error: reason instanceof Error ? reason.message : String(reason) })
+        }
+      }, [])
+
+      React.useEffect(() => { void load() }, [load])
+
+      React.useEffect(() => {
+        if (contextMenu === null) return undefined
+        const close = () => setContextMenu(null)
+        window.addEventListener('click', close)
+        return () => window.removeEventListener('click', close)
+      }, [contextMenu])
+
+      const folderId = activeFolder === 'all' || activeFolder === 'root' ? '' : activeFolder
+      const folder = state.folders.find((entry) => entry.id === activeFolder)
+      const folderLabel = activeFolder === 'all' ? t('dossiers.all') : activeFolder === 'root' ? t('dossiers.root') : folder?.name ?? t('dossiers.title')
+      const documents = state.items.filter((item) => item.kind === 'document' && (activeFolder === 'all' || item.folderId === folderId))
+      const skills = state.items.filter((item) => item.kind === 'skill' && (activeFolder === 'all' || item.folderId === folderId))
+      const shown = search.query !== '' && search.results.length > 0 ? search.results : documents
+
+      function openContext(event, kind, data = {}) {
+        event.preventDefault()
+        event.stopPropagation()
+        setContextMenu({ x: Math.min(event.clientX, window.innerWidth - 210), y: Math.min(event.clientY, window.innerHeight - 170), kind, confirmDelete: false, ...data })
+      }
+
+      function openDialog(mode, value = '', id = '') {
+        setDialog({ mode, value, id })
+      }
+
+      async function submitDialog() {
+        if (dialog === null || dialog.value.trim() === '') return
+        const name = dialog.value.trim()
+        try {
+          if (dialog.mode === 'folder') await apiPost('/dossiers/folder', { name })
+          else if (dialog.mode === 'folderRename') await apiPost('/dossiers/folder/rename', { id: dialog.id, name })
+          else if (dialog.mode === 'rename') await apiPost('/dossiers/rename', { id: dialog.id, title: name })
+          setDialog(null)
+          await load()
+        } catch (reason) {
+          setError(reason instanceof Error ? reason.message : String(reason))
+        }
+      }
+
+      async function importFiles(files) {
+        const list = Array.from(files ?? []).filter((file) => file !== null && file !== undefined)
+        if (list.length === 0) return
+        setImporting(true)
+        setError('')
+        const failures = []
+        const targetFolder = importFolderId !== null ? importFolderId : folderId
+        try {
+          for (const file of list) {
+            try {
+              await apiUpload('/dossiers/import', file, {
+                'x-dossier-name': encodeURIComponent(file.name),
+                'x-dossier-folder': targetFolder,
+              })
+            } catch (reason) {
+              failures.push(`${file.name}：${reason instanceof Error ? reason.message : String(reason)}`)
+            }
+          }
+          await load()
+        } finally {
+          setImporting(false)
+          setImportFolderId(null)
+          if (fileRef.current !== null) fileRef.current.value = ''
+          if (failures.length > 0) setError(failures.join('\n'))
+        }
+      }
+
+      async function runSearch(event) {
+        if (event !== undefined) event.preventDefault()
+        const value = query.trim()
+        if (value === '') { setSearch({ busy: false, results: [], error: '', query: '' }); return }
+        setSearch((current) => ({ ...current, busy: true, error: '', query: value }))
+        try {
+          const data = await apiGet(`/dossiers/search?folder=${encodeURIComponent(folderId)}&q=${encodeURIComponent(value)}`)
+          setSearch({ busy: false, results: data.matches ?? [], error: '', query: value })
+        } catch (reason) {
+          setSearch({ busy: false, results: [], error: reason instanceof Error ? reason.message : String(reason), query: value })
+        }
+      }
+
+      function stopSummary() {
+        summaryAbort.current?.abort()
+        summaryAbort.current = null
+        setSummary((current) => ({ ...current, status: current.status === 'streaming' ? 'idle' : current.status }))
+      }
+
+      async function startSummary(options = {}) {
+        const controller = new AbortController()
+        summaryAbort.current?.abort()
+        summaryAbort.current = controller
+        setSummary({ open: true, status: 'streaming', text: '', title: options.title ?? t('dossiers.summaryTitle'), error: '' })
+        try {
+          await apiStreamJson('/dossiers/summary', {
+            folderId,
+            ids: Array.isArray(options.ids) ? options.ids : [],
+            query: options.query ?? '',
+          }, {
+            signal: controller.signal,
+            onEvent: (event) => {
+              if (event.type === 'delta' && typeof event.text === 'string') {
+                setSummary((current) => ({ ...current, text: current.text + event.text }))
+              } else if (event.type === 'done') {
+                setSummary((current) => ({ ...current, status: 'done', text: event.text ?? current.text }))
+              } else if (event.type === 'error') {
+                setSummary((current) => ({ ...current, status: 'error', error: String(event.error ?? 'AI 总结失败') }))
+              }
+            },
+          })
+        } catch (reason) {
+          if (controller.signal.aborted) return
+          setSummary((current) => ({ ...current, status: 'error', error: reason instanceof Error ? reason.message : String(reason) }))
+        }
+      }
+
+      function closeSummary() {
+        summaryAbort.current?.abort()
+        summaryAbort.current = null
+        setSummary({ open: false, status: 'idle', text: '', title: '', error: '' })
+      }
+
+      function summaryScopeIds() {
+        if (search.query !== '' && search.results.length > 0) return search.results.map((entry) => entry.id)
+        return []
+      }
+
+      return h('div', { className: 'epub-panel epub-dossiers' },
+        h('header', { className: 'epub-papers-head' },
+          h('div', null,
+            h('button', { type: 'button', className: 'epub-icon-btn', onClick: onBack, title: t('papers.back'), 'aria-label': t('papers.back') }, h(IconArrowLeft, { size: 16 })),
+            h('div', { className: 'epub-papers-title-wrap' },
+              h('p', { className: 'epub-eyebrow' }, 'DOSSIER MODE'),
+              h('h1', { className: 'epub-papers-title' }, t('dossiers.title')),
+              h('p', { className: 'epub-papers-subtitle' }, t('dossiers.subtitle')),
+            ),
+          ),
+          h('div', { className: 'epub-papers-head-actions' },
+            h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => { setImportFolderId(null); fileRef.current?.click() } }, h(IconUpload, { size: 14 }), t('dossiers.import')),
+            h('input', { ref: fileRef, type: 'file', accept: BOOK_ACCEPT, multiple: true, style: { display: 'none' }, onChange: (event) => { void importFiles(event.target.files); event.target.value = '' } }),
+          ),
+        ),
+        error !== '' ? h(ErrorBanner, { title: t('dossiers.importFailed'), message: error, actionLabel: t('papers.retry'), onAction: () => setError('') }) : null,
+        h('div', { className: 'epub-papers-body' },
+          h('aside', { className: 'epub-paper-folders' },
+            h('div', { className: 'epub-paper-folder-top' },
+              h('button', { type: 'button', className: cn('epub-paper-folder', activeFolder === 'all' && 'is-active'), onClick: () => { setActiveFolder('all'); setSearch({ busy: false, results: [], error: '', query: '' }); setQuery('') } }, t('dossiers.all'), h('span', null, String(state.items.filter((item) => item.kind === 'document').length))),
+              h('button', { type: 'button', className: 'epub-paper-folder-add', onClick: () => openDialog('folder'), title: t('dossiers.newFolder'), 'aria-label': t('dossiers.newFolder') }, h(IconFolderPlus, { size: 15 })),
+            ),
+            h('button', { type: 'button', className: cn('epub-paper-folder', activeFolder === 'root' && 'is-active'), onClick: () => { setActiveFolder('root'); setSearch({ busy: false, results: [], error: '', query: '' }); setQuery('') } }, t('dossiers.root'), h('span', null, String(state.items.filter((item) => item.kind === 'document' && item.folderId === '').length))),
+            state.folders.map((entry) =>
+              h('div', { key: entry.id, className: cn('epub-paper-folder-wrap', activeFolder === entry.id && 'is-active'), onContextMenu: (event) => openContext(event, 'folder', { folderId: entry.id }) },
+                h('button', { type: 'button', className: cn('epub-paper-folder', activeFolder === entry.id && 'is-active'), onClick: () => { setActiveFolder(entry.id); setSearch({ busy: false, results: [], error: '', query: '' }); setQuery('') } }, entry.name, h('span', null, String(state.items.filter((item) => item.kind === 'document' && item.folderId === entry.id).length))),
+                h('button', { type: 'button', className: 'epub-paper-folder-rename', onClick: () => openDialog('folderRename', entry.name, entry.id), title: t('dossiers.renameFolder') }, '✎'),
+              ),
+            ),
+            skills.length > 0
+              ? h('div', { className: 'epub-dossier-skills' }, h('div', { className: 'epub-dossier-skills-head' }, t('dossiers.skills')), skills.map((item) => h('button', { key: item.id, type: 'button', className: 'epub-dossier-skill', onClick: () => openContext({ preventDefault() {}, stopPropagation() {}, clientX: 30, clientY: 30 }, 'item', { itemId: item.id }), title: item.preview }, h(IconSparkles, { size: 12 }), item.title)))
+              : null,
+          ),
+          h('main', { className: 'epub-paper-main', onContextMenu: (event) => openContext(event, 'library') },
+            h('div', { className: 'epub-paper-main-head' },
+              h('h2', null, folderLabel),
+              h('div', { className: 'epub-dossier-actions' },
+                h('form', { className: 'epub-dossier-search', onSubmit: runSearch },
+                  h(IconSearch, { size: 14 }),
+                  h('input', { value: query, onChange: (event) => setQuery(event.target.value), placeholder: t('dossiers.searchPlaceholder'), 'aria-label': t('dossiers.searchPlaceholder'), type: 'search' }),
+                ),
+                h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => void startSummary({ ids: summaryScopeIds(), query: search.query, title: search.query === '' ? t('dossiers.summaryTitle') : t('dossiers.summarySearchTitle') }), disabled: documents.length === 0 && search.results.length === 0 }, h(IconSparkles, { size: 13 }), t('dossiers.summary')),
+              ),
+            ),
+            h('div', { className: 'epub-dossier-hint' }, t('dossiers.skillHint')),
+            search.error !== '' ? h('div', { className: 'epub-dossier-empty' }, search.error) : null,
+            importing
+              ? h('div', { className: 'epub-paper-empty' }, h(Spinner, null), h('p', null, t('dossiers.importing')))
+              : state.status === 'loading'
+                ? h('div', { className: 'epub-paper-empty' }, h(Spinner, null), h('p', null, t('papers.importing')))
+                : state.status === 'error'
+                  ? h(ErrorBanner, { title: t('dossiers.importFailed'), message: state.error, actionLabel: t('papers.retry'), onAction: () => void load() })
+                  : shown.length === 0
+                    ? h('div', { className: 'epub-paper-empty' }, h(IconFolderPlus, { size: 30 }), h('h3', null, search.query !== '' ? t('dossiers.searchEmpty') : t('dossiers.empty')), h('p', null, search.query !== '' ? t('dossiers.searchEmptyHint') : t('dossiers.emptyHint')))
+                    : h('div', { className: 'epub-dossier-grid' },
+                        shown.map((item) => h('article', {
+                          key: item.id,
+                          className: 'epub-dossier-card',
+                          onClick: () => onRead(item.id),
+                          onContextMenu: (event) => openContext(event, 'item', { itemId: item.id }),
+                        },
+                          h('div', { className: 'epub-dossier-type' }, (item.format || 'DOC').toUpperCase()),
+                          h('h3', null, item.title),
+                          h('p', null, search.query !== '' && item.snippet !== undefined ? item.snippet : (item.preview || t('dossiers.openHint'))),
+                          h('div', { className: 'epub-dossier-meta' }, h('span', null, formatBytes(item.size ?? 0)), h('span', null, t('dossiers.open'))),
+                        )),
+                      ),
+          ),
+        ),
+        contextMenu !== null
+          ? h('div', { className: 'epub-context-menu', style: { left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }, onClick: (event) => event.stopPropagation() },
+              contextMenu.kind === 'library' || contextMenu.kind === 'folder'
+                ? h('button', { type: 'button', className: 'epub-context-item', onClick: () => { setContextMenu(null); openDialog('folder') } }, t('dossiers.newFolder'))
+                : null,
+              contextMenu.kind === 'folder'
+                ? h('button', { type: 'button', className: 'epub-context-item', onClick: () => { const id = contextMenu.folderId; setContextMenu(null); setActiveFolder(id); setImportFolderId(id); fileRef.current?.click() } }, t('dossiers.importHere'))
+                : null,
+              contextMenu.kind === 'folder'
+                ? h('button', { type: 'button', className: 'epub-context-item', onClick: () => { const entry = state.folders.find((value) => value.id === contextMenu.folderId); setContextMenu(null); if (entry !== undefined) openDialog('folderRename', entry.name, entry.id) } }, t('dossiers.renameFolder'))
+                : null,
+              contextMenu.kind === 'item'
+                ? (() => {
+                    const item = state.items.find((entry) => entry.id === contextMenu.itemId)
+                    return item === undefined ? null : h(React.Fragment, null,
+                      item.kind === 'document' ? h('button', { type: 'button', className: 'epub-context-item', onClick: () => { setContextMenu(null); onRead(item.id) } }, t('dossiers.open')) : null,
+                      h('button', { type: 'button', className: 'epub-context-item', onClick: () => { setContextMenu(null); openDialog('rename', item.title, item.id) } }, t('dossiers.rename')),
+                      h('button', {
+                        type: 'button',
+                        className: cn('epub-context-item', contextMenu.confirmDelete && 'is-danger'),
+                        onClick: () => {
+                          if (!contextMenu.confirmDelete) { setContextMenu({ ...contextMenu, confirmDelete: true }); return }
+                          const id = item.id
+                          setContextMenu(null)
+                          void (async () => { try { await apiPost('/dossiers/delete', { id }); await load() } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)) } })()
+                        },
+                      }, contextMenu.confirmDelete ? t('dossiers.confirmDelete') : t('dossiers.delete')),
+                    )
+                  })()
+                : null,
+            )
+          : null,
+        dialog !== null
+          ? h('div', { className: 'epub-dialog-backdrop', onMouseDown: (event) => { if (event.target === event.currentTarget) setDialog(null) } },
+              h('div', { className: 'epub-dialog' },
+                h('h3', null, dialog.mode === 'folder' ? t('dossiers.newFolder') : dialog.mode === 'folderRename' ? t('dossiers.renameFolder') : t('dossiers.rename')),
+                h('input', {
+                  className: 'epub-dialog-input',
+                  autoFocus: true,
+                  value: dialog.value,
+                  onChange: (event) => setDialog({ ...dialog, value: event.target.value }),
+                  onKeyDown: (event) => { if (event.key === 'Enter') { event.preventDefault(); void submitDialog() } if (event.key === 'Escape') setDialog(null) },
+                  placeholder: t('dossiers.namePlaceholder'),
+                }),
+                h('div', { className: 'epub-dialog-actions' },
+                  h('button', { type: 'button', className: 'epub-btn', onClick: () => setDialog(null) }, t('papers.cancel')),
+                  h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => void submitDialog() }, t('papers.confirm')),
+                ),
+              ),
+            )
+          : null,
+        summary.open
+          ? h('div', { className: 'epub-dossier-summary-backdrop', onMouseDown: (event) => { if (event.target === event.currentTarget) closeSummary() } },
+              h('section', { className: 'epub-dossier-summary' },
+                h('header', null,
+                  h('div', null, h('p', { className: 'epub-eyebrow' }, 'AI DOSSIER'), h('h3', null, summary.title)),
+                  h('div', { className: 'epub-dossier-summary-actions' },
+                    summary.status === 'streaming' ? h('button', { type: 'button', className: 'epub-btn', onClick: stopSummary }, t('dossiers.stop')) : null,
+                    h('button', { type: 'button', className: 'epub-icon-btn', onClick: closeSummary, title: t('papers.close') }, h(IconX, { size: 16 })),
+                  ),
+                ),
+                summary.error !== '' ? h('p', { className: 'epub-dossier-summary-error' }, summary.error) : null,
+                h('div', { className: 'epub-dossier-summary-body' }, summary.status === 'streaming' && summary.text === '' ? h(Spinner, null) : summary.text),
+              ),
+            )
+          : null,
       )
     }
 
@@ -4372,6 +4795,21 @@ window.__ModuleLoader__.load({
         announceCopy(info)
       }
 
+      async function openDossier(id) {
+        if (opening !== '') return
+        setOpening(id)
+        setOpenError('')
+        try {
+          const data = await apiPost('/dossiers/open', { id })
+          setReaderBook(data.book)
+          setScreen('dossier-reader')
+        } catch (error) {
+          setOpenError(`${t('dossiers.openFailed')}：${error instanceof Error ? error.message : String(error)}`)
+        } finally {
+          setOpening('')
+        }
+      }
+
       async function openPaper(id) {
         if (opening !== '') return
         setOpening(id)
@@ -4393,7 +4831,9 @@ window.__ModuleLoader__.load({
         { className: 'epub-panel' },
         screen === 'reader' && readerBook !== null
           ? h(Reader, { book: readerBook, t, onBack: () => { setReaderBook(null); setScreen('library') }, onToast: showToast })
-          : screen === 'paper-reader' && readerBook !== null
+          : screen === 'dossier-reader' && readerBook !== null
+            ? h(Reader, { book: readerBook, t, onBack: () => { setReaderBook(null); setScreen('dossiers') }, onToast: showToast })
+            : screen === 'paper-reader' && readerBook !== null
             ? h(PaperReaderShell, {
                 paperId: paperReaderId,
                 book: readerBook,
@@ -4402,7 +4842,9 @@ window.__ModuleLoader__.load({
                 onRead: (id) => void openPaper(id),
                 onToast: showToast,
               })
-            : screen === 'papers'
+            : screen === 'dossiers'
+              ? h(DossierLibrary, { t, onBack: () => setScreen('library'), onRead: (id) => void openDossier(id) })
+              : screen === 'papers'
               ? h(PaperLibrary, {
                   t,
                   onBack: () => setScreen('library'),
@@ -4417,7 +4859,7 @@ window.__ModuleLoader__.load({
                     onRead: (id) => void openPaper(id),
                   })
                 : h(React.Fragment, null,
-                    h(Library, { ctx, t, onOpenBook: openBook, opening, onLocalBook: openImported, onPapers: () => setScreen('papers') }),
+                    h(Library, { ctx, t, onOpenBook: openBook, opening, onLocalBook: openImported, onPapers: () => setScreen('papers'), onDossiers: () => setScreen('dossiers') }),
                     openError !== ''
                       ? h('div', { style: { position: 'absolute', left: 20, right: 20, bottom: 20, zIndex: 50 } }, h(ErrorBanner, { title: t('library.openFailed'), message: openError }))
                       : null,

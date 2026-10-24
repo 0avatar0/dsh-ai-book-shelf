@@ -1803,6 +1803,250 @@ function createHandler(ctx, config) {
     await writePaperLibrary(archiveDir, library)
   }
 
+  function dossierRootFor(archiveDir) {
+    return path.join(archiveDir, '.epub-reader', 'dossiers')
+  }
+
+  async function ensureDossierDirs(archiveDir) {
+    const root = dossierRootFor(archiveDir)
+    await fs.mkdir(path.join(root, 'files'), { recursive: true })
+    await fs.mkdir(path.join(root, 'skills'), { recursive: true })
+    return root
+  }
+
+  async function readDossierLibrary(archiveDir) {
+    const root = await ensureDossierDirs(archiveDir)
+    try {
+      const value = JSON.parse(await fs.readFile(path.join(root, 'library.json'), 'utf8'))
+      return {
+        folders: Array.isArray(value?.folders) ? value.folders : [],
+        items: Array.isArray(value?.items) ? value.items : [],
+      }
+    } catch (error) {
+      if (error?.code === 'ENOENT') return { folders: [], items: [] }
+      throw new HttpError(500, 'DOSSIER_LIBRARY_READ_FAILED', `卷宗库读取失败：${publicErrorMessage(error)}`)
+    }
+  }
+
+  async function writeDossierLibrary(archiveDir, library) {
+    const root = await ensureDossierDirs(archiveDir)
+    const file = path.join(root, 'library.json')
+    const temporary = `${file}.${process.pid}.tmp`
+    await fs.writeFile(temporary, JSON.stringify(library, null, 2), 'utf8')
+    await fs.rename(temporary, file)
+  }
+
+  function dossierItemPublic(item) {
+    return {
+      id: item.id,
+      kind: item.kind === 'skill' ? 'skill' : 'document',
+      title: item.title,
+      folderId: item.folderId ?? '',
+      addedAt: item.addedAt ?? 0,
+      size: item.size ?? 0,
+      format: item.format ?? 'TEXT',
+      pageCount: item.pageCount ?? 0,
+      preview: item.kind === 'skill' ? String(item.text ?? '').slice(0, 240) : '',
+    }
+  }
+
+  async function loadDossierBook(item, archiveDir) {
+    const cached = store.get(item.id)
+    if (cached !== undefined) return cached
+    if (typeof item.path !== 'string' || item.path === '') throw new HttpError(404, 'DOSSIER_MISSING', '卷宗文件不存在')
+    const stat = await fs.stat(item.path).catch(() => null)
+    if (stat === null) throw new HttpError(404, 'DOSSIER_MISSING', '卷宗文件已不在原位置')
+    const buffer = await fs.readFile(item.path)
+    const book = await parseBook(buffer, {
+      id: item.id,
+      fileName: path.basename(item.path),
+      assetUrl: (bookId, assetPath) => `api/epub-reader/asset?book=${encodeURIComponent(bookId)}&path=${encodeURIComponent(assetPath)}`,
+    })
+    book.size = buffer.length
+    book.addedAt = item.addedAt
+    book.annotationKey = `sha1-${hashText(buffer)}`
+    store.put(book)
+    return book
+  }
+
+  function dossierPlainText(book) {
+    if (Array.isArray(book.paperPages)) {
+      return book.paperPages.map((page) => (page.units ?? []).map((unit) => unit.text ?? '').join('\n')).join('\n\n')
+    }
+    return (book.chapters ?? []).map((chapter) => stripTags(chapter.html ?? '')).join('\n\n')
+  }
+
+  async function dossierTextForItem(item, archiveDir) {
+    try {
+      return dossierPlainText(await loadDossierBook(item, archiveDir))
+    } catch {
+      return ''
+    }
+  }
+
+  async function importDossier(req) {
+    const rawName = req.headers['x-dossier-name']
+    let name = 'document.txt'
+    if (typeof rawName === 'string' && rawName !== '') {
+      try { name = decodeURIComponent(rawName) } catch { name = rawName }
+    }
+    const extension = path.extname(name).toLowerCase()
+    const isSkill = path.basename(name).toLowerCase() === 'skill.md'
+    if (!isSkill && !BOOK_EXTENSIONS.has(extension)) throw new HttpError(415, 'DOSSIER_UNSUPPORTED', '卷宗只支持 EPUB、PDF、TXT、Markdown、HTML、FB2、DOCX')
+    const buffer = await readBody(req, MAX_IMPORT_BYTES)
+    if (buffer.length === 0) throw new HttpError(400, 'EMPTY_FILE', '没有收到卷宗文件')
+    const archiveDir = await ensureArchiveDir(config, ctx)
+    const root = await ensureDossierDirs(archiveDir)
+    const folderId = typeof req.headers['x-dossier-folder'] === 'string' ? req.headers['x-dossier-folder'] : ''
+    const digest = hashText(buffer)
+    if (isSkill) {
+      const target = path.join(root, 'skills', `${digest.slice(0, 16)}-SKILL.md`)
+      await fs.writeFile(target, buffer)
+      const text = buffer.toString('utf8')
+      const id = `skill-${digest.slice(0, 20)}`
+      const library = await readDossierLibrary(archiveDir)
+      const item = { id, kind: 'skill', title: text.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? path.basename(name, extension), path: target, text, folderId, addedAt: Date.now(), size: buffer.length, format: 'SKILL' }
+      library.items = library.items.filter((entry) => entry.id !== id)
+      library.items.push(item)
+      await writeDossierLibrary(archiveDir, library)
+      return { item: dossierItemPublic(item) }
+    }
+    const target = path.join(root, 'files', `${digest.slice(0, 16)}-${path.basename(name).replace(/[^\w.\-\u4e00-\u9fff]+/g, '-').slice(-80)}`)
+    await fs.writeFile(target, buffer)
+    let book
+    try {
+      book = await parseBook(buffer, { id: `dossier-${digest.slice(0, 20)}`, fileName: name, assetUrl: (bookId, assetPath) => `api/epub-reader/asset?book=${encodeURIComponent(bookId)}&path=${encodeURIComponent(assetPath)}` })
+    } catch (error) {
+      await fs.unlink(target).catch(() => {})
+      throw error instanceof HttpError ? error : new HttpError(422, 'INVALID_DOSSIER', `卷宗解析失败：${publicErrorMessage(error)}`)
+    }
+    const text = dossierPlainText(book)
+    if (text.trim() === '') {
+      await fs.unlink(target).catch(() => {})
+      throw new HttpError(422, 'DOSSIER_NO_TEXT', '这个文件没有可提取的文字')
+    }
+    const id = `dossier-${digest.slice(0, 20)}`
+    book.size = buffer.length
+    book.addedAt = Date.now()
+    book.annotationKey = `sha1-${digest}`
+    store.put(book)
+    const library = await readDossierLibrary(archiveDir)
+    const item = { id, kind: 'document', title: book.title && book.title !== '未命名书籍' ? book.title : path.basename(name, extension), path: target, folderId, addedAt: Date.now(), size: buffer.length, format: book.format ?? path.extname(name).slice(1).toUpperCase(), pageCount: book.paperPages?.length ?? 0 }
+    library.items = library.items.filter((entry) => entry.id !== id)
+    library.items.push(item)
+    await writeDossierLibrary(archiveDir, library)
+    return { item: dossierItemPublic(item), book: publicBook(book) }
+  }
+
+  async function deleteDossier(id) {
+    const archiveDir = await ensureArchiveDir(config, ctx)
+    const library = await readDossierLibrary(archiveDir)
+    const item = library.items.find((entry) => entry.id === id)
+    if (item === undefined) throw new HttpError(404, 'DOSSIER_NOT_FOUND', '卷宗不存在')
+    const root = await ensureDossierDirs(archiveDir)
+    const trash = path.join(root, 'trash')
+    await fs.mkdir(trash, { recursive: true })
+    if (typeof item.path === 'string' && item.path !== '') {
+      try { await fs.rename(item.path, path.join(trash, `${Date.now()}-${path.basename(item.path)}`)) } catch { /* already gone */ }
+    }
+    library.items = library.items.filter((entry) => entry.id !== id)
+    store.remove(id)
+    await writeDossierLibrary(archiveDir, library)
+    return { deleted: true }
+  }
+
+  async function searchDossiers(folderId, query) {
+    const archiveDir = await ensureArchiveDir(config, ctx)
+    const library = await readDossierLibrary(archiveDir)
+    const terms = [...new Set([query, traditionalizeChinese(query)])].filter((entry) => entry.trim() !== '')
+    const needles = terms.map((entry) => entry.toLowerCase())
+    const docs = library.items.filter((item) => item.kind === 'document' && (folderId === '' || item.folderId === folderId))
+    const matches = []
+    for (const item of docs) {
+      const text = await dossierTextForItem(item, archiveDir)
+      const lower = text.toLowerCase()
+      let best = -1
+      for (const needle of needles) {
+        const at = lower.indexOf(needle)
+        if (at !== -1 && (best === -1 || at < best)) best = at
+      }
+      if (best === -1) continue
+      const start = Math.max(0, best - 90)
+      matches.push({ id: item.id, title: item.title, folderId: item.folderId ?? '', snippet: text.slice(start, best + 180).replace(/\s+/g, ' ').trim() })
+      if (matches.length >= 60) break
+    }
+    return { matches, total: matches.length, query }
+  }
+
+  async function dossierSummary(req, res) {
+    const payload = await readJson(req)
+    const folderId = typeof payload.folderId === 'string' ? payload.folderId : ''
+    const query = typeof payload.query === 'string' ? payload.query.trim() : ''
+    const archiveDir = await ensureArchiveDir(config, ctx)
+    const library = await readDossierLibrary(archiveDir)
+    const folder = library.folders.find((entry) => entry.id === folderId)
+    const docs = library.items.filter((item) => item.kind === 'document' && (folderId === '' || item.folderId === folderId))
+    const ids = Array.isArray(payload.ids) ? payload.ids.filter((id) => typeof id === 'string') : []
+    const selected = ids.length > 0 ? docs.filter((item) => ids.includes(item.id)) : docs
+    if (selected.length === 0) throw new HttpError(400, 'DOSSIER_EMPTY', '这个卷宗里没有可总结的文件')
+    const skills = library.items.filter((item) => item.kind === 'skill' && (folderId === '' || item.folderId === folderId))
+    const route = resolveModelRoute(ctx, config)
+    if (route === undefined) throw new HttpError(503, 'NO_MODEL', '还没有选择模型')
+    const sections = []
+    for (const item of selected.slice(0, 30)) {
+      const text = (await dossierTextForItem(item, archiveDir)).slice(0, 12000)
+      if (text.trim() !== '') sections.push(`【${item.title}】\n${text}`)
+    }
+    if (sections.length === 0) throw new HttpError(422, 'DOSSIER_NO_TEXT', '卷宗文件没有可总结的文字')
+    const skillText = skills.map((item) => `## ${item.title}\n${String(item.text ?? '').slice(0, 6000)}`).join('\n\n')
+    const system = '你是卷宗分析助手。请严格依据提供的卷宗内容作答；有 Skill 时优先遵循 Skill 中的方法与格式。不要编造卷宗中没有的事实。'
+    const prompt = [
+      `卷宗：${folder?.name ?? '未分类卷宗'}`,
+      query === '' ? '请总结这个卷宗的核心内容、关键事实、争议点、时间线和待办事项。' : `请围绕以下问题总结卷宗：${query}`,
+      skillText === '' ? '' : `\n<!-- SKILLS -->\n${skillText}\n<!-- /SKILLS -->`,
+      `\n<!-- DOSSIERS -->\n${sections.join('\n\n')}\n<!-- /DOSSIERS -->`,
+    ].filter(Boolean).join('\n')
+    const llm = ctx.get('llm')
+    if (llm === undefined || typeof llm.stream !== 'function') throw new HttpError(503, 'NO_MODEL', '当前环境没有可用的模型服务')
+    const controller = new AbortController()
+    let closed = false
+    res.on('close', () => { if (!res.writableEnded) { closed = true; controller.abort() } })
+    const request = { system, messages: [{ role: 'user', content: [{ type: 'text', text: prompt.slice(0, 120000) }] }], signal: controller.signal }
+    const call = { provider: route.provider, model: route.model, temperature: 0.2, maxTokens: 1800 }
+    const stream = typeof llm.prepareCall === 'function'
+      ? await (async () => { const prepared = await llm.prepareCall(call, controller.signal); return prepared.stream({ ...prepared.config, ...request }) })()
+      : llm.stream({ ...call, ...request })
+    res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' })
+    if (typeof res.flushHeaders === 'function') res.flushHeaders()
+    await writeSse(res, ': connected\n\n')
+    const heartbeat = setInterval(() => { if (!closed) void writeSse(res, ': ping\n\n') }, 15000)
+    if (typeof heartbeat.unref === 'function') heartbeat.unref()
+    let full = ''
+    try {
+      for await (const chunk of stream) {
+        if (closed) break
+        if (chunk.type === 'text-delta') {
+          full += chunk.text
+          if (!(await writeSse(res, `data: ${JSON.stringify({ type: 'delta', text: chunk.text })}\n\n`))) break
+        } else if (chunk.type === 'finish' && chunk.reason.kind === 'error') {
+          throw new Error(chunk.reason.failure?.message ?? '模型返回了错误')
+        }
+      }
+      if (!closed) {
+        await writeSse(res, `data: ${JSON.stringify({ type: 'done', text: full })}\n\n`)
+        res.end()
+      }
+    } catch (error) {
+      if (!closed) {
+        await writeSse(res, `event: error\ndata: ${JSON.stringify({ error: publicErrorMessage(error) })}\n\n`)
+        res.end()
+      }
+    } finally {
+      clearInterval(heartbeat)
+      if (!closed) controller.abort()
+    }
+  }
+
   async function translatePaperUnit(id, key, force) {
     const archiveDir = await ensureArchiveDir(config, ctx)
     const { sourcePaper, sourceBook, translation } = await paperContext(id, archiveDir)
@@ -2283,6 +2527,118 @@ function createHandler(ctx, config) {
         const payload = await readJson(req)
         const id = typeof payload.id === 'string' ? payload.id : ''
         sendJson(res, 200, await deletePaper(id))
+        return
+      }
+
+      if (method === 'GET' && pathname === '/dossiers') {
+        const archiveDir = await ensureArchiveDir(config, ctx)
+        const library = await readDossierLibrary(archiveDir)
+        sendJson(res, 200, { folders: library.folders, items: library.items.map(dossierItemPublic) })
+        return
+      }
+
+      if (method === 'POST' && pathname === '/dossiers/folder') {
+        const payload = await readJson(req)
+        const name = typeof payload.name === 'string' ? payload.name.trim().slice(0, 120) : ''
+        if (name === '') throw new HttpError(400, 'EMPTY_FOLDER', '文件夹名称不能为空')
+        const archiveDir = await ensureArchiveDir(config, ctx)
+        const library = await readDossierLibrary(archiveDir)
+        const folder = { id: `dfolder-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`, name, createdAt: Date.now() }
+        library.folders.push(folder)
+        await writeDossierLibrary(archiveDir, library)
+        sendJson(res, 200, { folder })
+        return
+      }
+
+      if (method === 'POST' && pathname === '/dossiers/folder/rename') {
+        const payload = await readJson(req)
+        const id = typeof payload.id === 'string' ? payload.id : ''
+        const name = typeof payload.name === 'string' ? payload.name.trim().slice(0, 120) : ''
+        if (name === '') throw new HttpError(400, 'EMPTY_FOLDER', '文件夹名称不能为空')
+        const archiveDir = await ensureArchiveDir(config, ctx)
+        const library = await readDossierLibrary(archiveDir)
+        const folder = library.folders.find((entry) => entry.id === id)
+        if (folder === undefined) throw new HttpError(404, 'FOLDER_NOT_FOUND', '卷宗文件夹不存在')
+        folder.name = name
+        await writeDossierLibrary(archiveDir, library)
+        sendJson(res, 200, { folder })
+        return
+      }
+
+      if (method === 'POST' && pathname === '/dossiers/folder/delete') {
+        const payload = await readJson(req)
+        const id = typeof payload.id === 'string' ? payload.id : ''
+        const archiveDir = await ensureArchiveDir(config, ctx)
+        const library = await readDossierLibrary(archiveDir)
+        library.folders = library.folders.filter((entry) => entry.id !== id)
+        library.items = library.items.map((entry) => entry.folderId === id ? { ...entry, folderId: '' } : entry)
+        await writeDossierLibrary(archiveDir, library)
+        sendJson(res, 200, { deleted: true })
+        return
+      }
+
+      if (method === 'POST' && pathname === '/dossiers/import') {
+        sendJson(res, 200, await importDossier(req))
+        return
+      }
+
+      if (method === 'POST' && pathname === '/dossiers/open') {
+        const payload = await readJson(req)
+        const id = typeof payload.id === 'string' ? payload.id : ''
+        const archiveDir = await ensureArchiveDir(config, ctx)
+        const library = await readDossierLibrary(archiveDir)
+        const item = library.items.find((entry) => entry.id === id && entry.kind === 'document')
+        if (item === undefined) throw new HttpError(404, 'DOSSIER_NOT_FOUND', '卷宗不存在')
+        sendJson(res, 200, { item: dossierItemPublic(item), book: publicBook(await loadDossierBook(item, archiveDir)) })
+        return
+      }
+
+      if (method === 'POST' && pathname === '/dossiers/move') {
+        const payload = await readJson(req)
+        const id = typeof payload.id === 'string' ? payload.id : ''
+        const folderId = typeof payload.folderId === 'string' ? payload.folderId : ''
+        const archiveDir = await ensureArchiveDir(config, ctx)
+        const library = await readDossierLibrary(archiveDir)
+        const item = library.items.find((entry) => entry.id === id)
+        if (item === undefined) throw new HttpError(404, 'DOSSIER_NOT_FOUND', '卷宗不存在')
+        item.folderId = folderId
+        await writeDossierLibrary(archiveDir, library)
+        sendJson(res, 200, { item: dossierItemPublic(item) })
+        return
+      }
+
+      if (method === 'POST' && pathname === '/dossiers/rename') {
+        const payload = await readJson(req)
+        const id = typeof payload.id === 'string' ? payload.id : ''
+        const title = typeof payload.title === 'string' ? payload.title.trim().slice(0, 200) : ''
+        if (title === '') throw new HttpError(400, 'EMPTY_TITLE', '标题不能为空')
+        const archiveDir = await ensureArchiveDir(config, ctx)
+        const library = await readDossierLibrary(archiveDir)
+        const item = library.items.find((entry) => entry.id === id)
+        if (item === undefined) throw new HttpError(404, 'DOSSIER_NOT_FOUND', '卷宗不存在')
+        item.title = title
+        await writeDossierLibrary(archiveDir, library)
+        sendJson(res, 200, { item: dossierItemPublic(item) })
+        return
+      }
+
+      if (method === 'POST' && pathname === '/dossiers/delete') {
+        const payload = await readJson(req)
+        const id = typeof payload.id === 'string' ? payload.id : ''
+        sendJson(res, 200, await deleteDossier(id))
+        return
+      }
+
+      if (method === 'GET' && pathname === '/dossiers/search') {
+        const folder = (url.searchParams.get('folder') ?? '').trim()
+        const query = (url.searchParams.get('q') ?? '').trim()
+        if (query === '') throw new HttpError(400, 'EMPTY_QUERY', '搜索内容不能为空')
+        sendJson(res, 200, await searchDossiers(folder, query))
+        return
+      }
+
+      if (method === 'POST' && pathname === '/dossiers/summary') {
+        await dossierSummary(req, res)
         return
       }
 
