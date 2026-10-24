@@ -8,7 +8,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 echo "Packing $NAME@$VERSION ..."
-pnpm pack --pack-destination "$TMP" >/dev/null
+npm pack --pack-destination "$TMP" >/dev/null
 tar -xzf "$TMP"/*.tgz -C "$TMP"
 
 node - "$TMP/package/package.json" "$NAME" "$VERSION" <<'NODE'
