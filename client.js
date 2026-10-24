@@ -1002,7 +1002,8 @@ window.__ModuleLoader__.load({
 .epub-dossier-skill-add { display: grid; place-items: center; width: 20px; height: 20px; border: 0; border-radius: 4px; background: transparent; color: var(--epub-muted); font-size: 14px; line-height: 1; }
 .epub-dossier-skill-add:hover { color: var(--epub-text); background: var(--epub-surface-2); }
 .epub-dossier-skill-empty { margin: 3px 0 0; color: var(--epub-muted); font-size: 8.5px; line-height: 1.5; }
-.epub-dossier-skill.is-empty { color: var(--epub-muted); font-style: italic; }
+.epub-dossier-skill.is-empty { color: var(--epub-muted); font-style: italic; font-size: 8px; }
+.epub-dossier-importing { display: flex; align-items: center; gap: 7px; margin: 0 0 9px; padding: 7px 9px; border: 1px solid var(--epub-line); border-radius: 7px; background: var(--epub-surface); color: var(--epub-muted); font-size: 9.5px; }
 .epub-skill-editor { display: flex; flex-direction: column; width: min(620px, 100%); max-height: min(82vh, 680px); border: 1px solid var(--epub-line-strong); border-radius: 13px; background: var(--epub-surface); box-shadow: 0 22px 60px -18px rgba(0,0,0,.6); }
 .epub-skill-editor header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 14px 16px 0; }
 .epub-skill-editor h3 { margin: 2px 0 0; font-size: 15px; }
@@ -3127,10 +3128,18 @@ window.__ModuleLoader__.load({
         try {
           for (const file of list) {
             try {
-              await apiUpload('/dossiers/import', file, {
+              const data = await apiUpload('/dossiers/import', file, {
                 'x-dossier-name': encodeURIComponent(file.name),
                 'x-dossier-folder': targetFolder,
               })
+              if (data?.item !== undefined) {
+                setState((current) => ({
+                  status: 'ready',
+                  error: '',
+                  folders: current.folders,
+                  items: [...current.items.filter((entry) => entry.id !== data.item.id), data.item],
+                }))
+              }
             } catch (reason) {
               failures.push(`${file.name}：${reason instanceof Error ? reason.message : String(reason)}`)
             }
@@ -3288,14 +3297,16 @@ window.__ModuleLoader__.load({
             h('div', { className: 'epub-dossier-hint' }, t('dossiers.skillHint')),
             search.error !== '' ? h('div', { className: 'epub-dossier-empty' }, search.error) : null,
             importing
-              ? h('div', { className: 'epub-paper-empty' }, h(Spinner, null), h('p', null, t('dossiers.importing')))
-              : state.status === 'loading'
-                ? h('div', { className: 'epub-paper-empty' }, h(Spinner, null), h('p', null, t('papers.importing')))
-                : state.status === 'error'
-                  ? h(ErrorBanner, { title: t('dossiers.importFailed'), message: state.error, actionLabel: t('papers.retry'), onAction: () => void load() })
-                  : shown.length === 0
-                    ? h('div', { className: 'epub-paper-empty' }, h(IconFolderPlus, { size: 30 }), h('h3', null, search.query !== '' ? t('dossiers.searchEmpty') : t('dossiers.empty')), h('p', null, search.query !== '' ? t('dossiers.searchEmptyHint') : t('dossiers.emptyHint')))
-                    : h('div', { className: 'epub-dossier-grid' },
+              ? h('div', { className: 'epub-dossier-importing' }, h(Spinner, null), h('span', null, t('dossiers.importing')))
+              : null,
+            state.status === 'loading' && state.items.length === 0
+              ? h('div', { className: 'epub-paper-empty' }, h(Spinner, null), h('p', null, t('papers.importing')))
+              : state.status === 'error'
+                ? h(ErrorBanner, { title: t('dossiers.importFailed'), message: state.error, actionLabel: t('papers.retry'), onAction: () => void load() })
+                : shown.length === 0 && !importing
+                  ? h('div', { className: 'epub-paper-empty' }, h(IconFolderPlus, { size: 30 }), h('h3', null, search.query !== '' ? t('dossiers.searchEmpty') : t('dossiers.empty')), h('p', null, search.query !== '' ? t('dossiers.searchEmptyHint') : t('dossiers.emptyHint')))
+                  : shown.length > 0
+                    ? h('div', { className: 'epub-dossier-grid' },
                         shown.map((item) => h('article', {
                           key: item.id,
                           className: 'epub-dossier-card',
@@ -3307,7 +3318,8 @@ window.__ModuleLoader__.load({
                           h('p', null, search.query !== '' && item.snippet !== undefined ? item.snippet : (item.preview || t('dossiers.openHint'))),
                           h('div', { className: 'epub-dossier-meta' }, h('span', null, formatBytes(item.size ?? 0)), h('span', null, t('dossiers.open'))),
                         )),
-                      ),
+                      )
+                    : null,
           ),
         ),
         contextMenu !== null
