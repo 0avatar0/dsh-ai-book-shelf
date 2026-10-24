@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-epub-reader",
-  "version": "2.6.8",
+  "version": "2.6.9",
   "private": true,
   "description": "AI Book Shelf: read books and papers in Harness, search full text, explain and discuss with AI, translate papers and compare bilingual text.",
   "keywords": [

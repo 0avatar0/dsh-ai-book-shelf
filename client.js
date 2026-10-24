@@ -1002,6 +1002,7 @@ window.__ModuleLoader__.load({
 .epub-dialog-input:focus { border-color: color-mix(in srgb, var(--epub-accent) 45%, var(--epub-line)); }
 .epub-dialog-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 12px; }
 .epub-dossier-actions { display: flex; align-items: center; gap: 7px; margin-left: auto; }
+.epub-dossier-summary-btn { height: 30px; padding: 0 8px; font-size: 10px; }
 .epub-dossier-search { display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 8px; border: 1px solid var(--epub-line); border-radius: 7px; background: var(--dsw-alias-bg-base); color: var(--epub-muted); }
 .epub-dossier-search input { width: 190px; border: 0; outline: 0; background: transparent; color: var(--epub-text); font-size: 10px; }
 .epub-dossier-hint { margin: 0 0 10px; color: var(--epub-muted); font-size: 9px; line-height: 1.5; }
@@ -3343,7 +3344,7 @@ window.__ModuleLoader__.load({
               h('button', { type: 'button', className: cn('epub-paper-folder', activeFolder === 'all' && 'is-active'), onClick: () => { setActiveFolder('all'); setSearch({ busy: false, results: [], error: '', query: '' }); setQuery('') } }, t('dossiers.all'), h('span', null, String(state.items.filter((item) => item.kind === 'document').length))),
               h('button', { type: 'button', className: 'epub-paper-folder-add', onClick: () => openDialog('folder'), title: t('dossiers.newFolder'), 'aria-label': t('dossiers.newFolder') }, h(IconFolderPlus, { size: 15 })),
             ),
-            h('div', { className: 'epub-dossier-folder-group' },
+            h('div', { className: 'epub-dossier-folder-group', onContextMenu: (event) => openContext(event, 'root') },
               h('div', { className: cn('epub-paper-folder-wrap', activeFolder === 'root' && 'is-active') },
                 h('button', { type: 'button', className: 'epub-dossier-expand', onClick: () => toggleFolder('root'), title: expandedFolders.has('root') ? t('dossiers.collapse') : t('dossiers.expand'), 'aria-label': expandedFolders.has('root') ? t('dossiers.collapse') : t('dossiers.expand') }, expandedFolders.has('root') ? '▾' : '▸'),
                 h('button', { type: 'button', className: cn('epub-paper-folder', activeFolder === 'root' && 'is-active'), onClick: () => { setActiveFolder('root'); setSearch({ busy: false, results: [], error: '', query: '' }); setQuery('') } }, t('dossiers.root'), h('span', null, String(state.items.filter((item) => item.kind === 'document' && item.folderId === '').length))),
@@ -3376,7 +3377,7 @@ window.__ModuleLoader__.load({
                   : search.query !== ''
                     ? h('span', { className: 'epub-dossier-search-count' }, format(t('dossiers.searchCount'), { count: search.results.length }))
                     : null,
-                h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => void startSummary({ ids: summaryScopeIds(), query: search.query, title: search.query === '' ? t('dossiers.summaryTitle') : t('dossiers.summarySearchTitle') }), disabled: search.busy || (documents.length === 0 && search.results.length === 0) }, h(IconSparkles, { size: 13 }), t('dossiers.summary')),
+                h('button', { type: 'button', className: 'epub-btn epub-btn-primary epub-dossier-summary-btn', onClick: () => void startSummary({ ids: summaryScopeIds(), query: search.query, title: search.query === '' ? t('dossiers.summaryTitle') : t('dossiers.summarySearchTitle') }), disabled: search.busy || (documents.length === 0 && search.results.length === 0) }, h(IconSparkles, { size: 12 }), t('dossiers.summary')),
               ),
             ),
             h('div', { className: 'epub-dossier-hint' }, t('dossiers.skillHint')),
@@ -3411,25 +3412,25 @@ window.__ModuleLoader__.load({
         ),
         contextMenu !== null
           ? h('div', { className: 'epub-context-menu', style: { left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }, onClick: (event) => event.stopPropagation() },
-              contextMenu.kind === 'library' || contextMenu.kind === 'folder'
+              contextMenu.kind === 'library' || contextMenu.kind === 'folder' || contextMenu.kind === 'root'
                 ? h('button', { type: 'button', className: 'epub-context-item', onClick: () => { setContextMenu(null); openDialog('folder') } }, t('dossiers.newFolder'))
                 : null,
-              contextMenu.kind === 'folder'
-                ? h('button', { type: 'button', className: 'epub-context-item', onClick: () => { const id = contextMenu.folderId; setContextMenu(null); setActiveFolder(id); setImportFolderId(id); fileRef.current?.click() } }, t('dossiers.importHere'))
+              contextMenu.kind === 'folder' || contextMenu.kind === 'root'
+                ? h('button', { type: 'button', className: 'epub-context-item', onClick: () => { const id = contextMenu.kind === 'root' ? '' : contextMenu.folderId; setContextMenu(null); setActiveFolder(id === '' ? 'root' : id); setImportFolderId(id); fileRef.current?.click() } }, t('dossiers.importHere'))
                 : null,
               contextMenu.kind === 'folder'
                 ? h('button', { type: 'button', className: 'epub-context-item', onClick: () => { const entry = state.folders.find((value) => value.id === contextMenu.folderId); setContextMenu(null); if (entry !== undefined) openDialog('folderRename', entry.name, entry.id) } }, t('dossiers.renameFolder'))
                 : null,
-              contextMenu.kind === 'folder'
+              contextMenu.kind === 'folder' || contextMenu.kind === 'root'
                 ? h('button', {
                     type: 'button',
                     className: 'epub-context-item is-danger',
                     onClick: () => {
-                      const id = contextMenu.folderId
-                      const entry = state.folders.find((value) => value.id === id)
+                      const id = contextMenu.kind === 'root' ? '' : contextMenu.folderId
+                      const entry = contextMenu.kind === 'folder' ? state.folders.find((value) => value.id === id) : undefined
                       const count = state.items.filter((item) => item.kind === 'document' && item.folderId === id).length
                       setContextMenu(null)
-                      setClearConfirm({ scope: id, count, label: entry?.name ?? t('dossiers.title') })
+                      setClearConfirm({ scope: id, count, label: entry?.name ?? t('dossiers.root') })
                     },
                   }, t('dossiers.clear'))
                 : null,
