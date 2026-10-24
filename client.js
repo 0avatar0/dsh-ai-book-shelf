@@ -41,8 +41,8 @@ window.__ModuleLoader__.load({
     ]
 
     const ZH = {
-      'panel.title': '书架',
-      'panel.eyebrow': 'BOOK SHELF',
+      'panel.title': 'AI 书架',
+      'panel.eyebrow': 'AI BOOK SHELF',
       'library.subtitle': '在 Harness 里读书。外部书籍会自动复制到书架，选中任意文字即可让 AI 结合上下文解释。',
       'library.open': '打开书籍',
       'library.refresh': '刷新书架',
@@ -242,8 +242,8 @@ window.__ModuleLoader__.load({
     }
 
     const EN = {
-      'panel.title': 'Books',
-      'panel.eyebrow': 'BOOK SHELF',
+      'panel.title': 'AI Book Shelf',
+      'panel.eyebrow': 'AI BOOK SHELF',
       'library.subtitle': 'Read in Harness. External books are copied to the shelf; select any passage and the AI explains it in context.',
       'library.open': 'Open book',
       'library.refresh': 'Refresh shelf',

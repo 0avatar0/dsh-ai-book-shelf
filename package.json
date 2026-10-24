@@ -1,15 +1,25 @@
 {
   "name": "@local/dsh-epub-reader",
-  "version": "2.4.4",
+  "version": "2.5.0",
   "private": true,
-  "description": "Read EPUB, PDF, TXT, Markdown, HTML, FB2, and DOCX books inside the Harness Web UI and explain selected text with the configured model.",
+  "description": "AI Book Shelf: read books and papers in Harness, search full text, explain and discuss with AI, translate papers and compare bilingual text.",
   "keywords": [
     "dsh-plugin",
+    "ai-book-shelf",
+    "book-shelf",
+    "paper-reader",
+    "paper-translation",
     "epub",
+    "pdf",
     "reader",
     "ai",
     "deepseek-harness"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/0avatar0/dsh-ai-book-shelf.git"
+  },
+  "homepage": "https://github.com/0avatar0/dsh-ai-book-shelf",
   "type": "module",
   "exports": {
     ".": "./index.js",

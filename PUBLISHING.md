@@ -2,12 +2,12 @@
 
 ## 当前发布状态
 
-- GitHub 仓库：<https://github.com/0avatar0/dsh-reading-shelf>
-- 首个 Release：<https://github.com/0avatar0/dsh-reading-shelf/releases/tag/v2.4.4>
+- GitHub 仓库：<https://github.com/0avatar0/dsh-ai-book-shelf>
+- 首个 Release：<https://github.com/0avatar0/dsh-ai-book-shelf/releases/tag/v2.5.0>
 - 发布包：
-  - `dsh-epub-reader-2.4.4.tgz`：DSH 插件安装包
-  - `dsh-epub-reader-2.4.4.zip`：包含 tgz、中文安装说明和 SHA-256
-- 当前插件版本：`2.4.4`
+  - `dsh-ai-book-shelf-2.5.0.tgz`：DSH 插件安装包
+  - `dsh-ai-book-shelf-2.5.0.zip`：包含 tgz、中文安装说明和 SHA-256
+- 当前插件版本：`2.5.0`
 
 ## 一、发布到 GitHub（已经完成，后续更新用）
 
@@ -22,7 +22,7 @@ pnpm pack --pack-destination ../dist
 
 # 2. 生成校验和并打包 zip（可选）
 cd ../dist
-sha256sum dsh-epub-reader-<version>.tgz > SHA256SUMS.txt
+sha256sum dsh-ai-book-shelf-<version>.tgz > SHA256SUMS.txt
 
 # 3. 提交并推送源码
 cd ../epub-reader-plugin
@@ -32,8 +32,8 @@ git push
 
 # 4. 创建 GitHub Release，并上传安装包
 gh release create v<version> \
-  ../dist/dsh-epub-reader-<version>.tgz \
-  ../dist/dsh-epub-reader-<version>.zip \
+  ../dist/dsh-ai-book-shelf-<version>.tgz \
+  ../dist/dsh-ai-book-shelf-<version>.zip \
   ../dist/INSTALL-zh.md \
   ../dist/SHA256SUMS.txt \
   --title "v<version>" \
@@ -64,29 +64,29 @@ npm whoami
 ```bash
 cd /d/BookLib/epub-reader-plugin
 
-# 默认发布为 dsh-reading-shelf
+# 默认发布为 dsh-ai-book-shelf
 ./scripts/publish-npm.sh
 
 # 或指定包名
-NPM_NAME=your-name-dsh-reading-shelf ./scripts/publish-npm.sh
+NPM_NAME=your-name-dsh-ai-book-shelf ./scripts/publish-npm.sh
 ```
 
-npm 包名必须全局唯一；当前查询 `dsh-reading-shelf` 和 `dsh-epub-reader` 均未被占用。发布前可检查：
+npm 包名必须全局唯一；当前查询 `dsh-ai-book-shelf` 和 `dsh-epub-reader` 均未被占用。发布前可检查：
 
 ```bash
-npm view dsh-reading-shelf version
+npm view dsh-ai-book-shelf version
 ```
 
 发布后，其他电脑可在 DSH 的 **Plugins → Add plugin** 中填：
 
 ```text
-dsh-reading-shelf@2.4.4
+dsh-ai-book-shelf@2.5.0
 ```
 
 或继续使用 tgz：
 
 ```text
-D:\path\to\dsh-epub-reader-2.4.4.tgz
+D:\path\to\dsh-ai-book-shelf-2.5.0.tgz
 ```
 
 ## 三、注册清单

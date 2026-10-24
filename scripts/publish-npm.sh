@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-NAME="${NPM_NAME:-dsh-reading-shelf}"
+NAME="${NPM_NAME:-dsh-ai-book-shelf}"
 VERSION="$(node -p "require('./package.json').version")"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
