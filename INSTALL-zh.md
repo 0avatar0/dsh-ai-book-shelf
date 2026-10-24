@@ -21,9 +21,9 @@
 5. 在包输入框中粘贴 tgz 的**绝对路径**（不是目录），例如：
    - Windows：`C:\Users\你的用户名\Downloads\dsh-ai-book-shelf-2.5.1.tgz`
    - macOS / Linux：`/Users/你的用户名/Downloads/dsh-ai-book-shelf-2.5.1.tgz`
-6. 点击 **Install / 安装**，等待安装完成。新 bundle 默认启用。
-7. 刷新页面。左侧应出现 **AI 书架** 图标。
-8. 如果没出现，回到 **Plugins** 页面，确认 `@local/dsh-epub-reader` 处于 **On** 状态。
+6. 点击 **Install / 安装**，等待安装完成。
+7. 在 **Plugins** 页面找到 `dsh-ai-book-shelf`，把它的 bundle 开关切到 **On / 启用**。外部 bundle 出于安全默认是关闭的，只需要启用这一次。
+8. 刷新页面。左侧应出现 **AI 书架** 图标。如果没出现，确认版本是 `2.5.1`，并确认没有旧的 `@local/dsh-epub-reader`。
 
 > 也可以把整个 `epub-reader-plugin` 文件夹复制到目标电脑，在同一个安装框里填该文件夹的绝对路径。tgz 方式更适合传输，文件夹方式更适合继续修改源码。
 
