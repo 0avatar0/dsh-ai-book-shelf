@@ -1871,7 +1871,10 @@ function createHandler(ctx, config) {
 
   function dossierPlainText(book) {
     if (Array.isArray(book.paperPages)) {
-      return book.paperPages.map((page) => (page.units ?? []).map((unit) => unit.text ?? '').join('\n')).join('\n\n')
+      return book.paperPages.map((page) => {
+        if (typeof page.text === 'string') return page.text
+        return (page.units ?? []).map((unit) => unit.text ?? unit.source ?? '').join('\n')
+      }).join('\n\n')
     }
     return (book.chapters ?? []).map((chapter) => stripTags(chapter.html ?? '')).join('\n\n')
   }
