@@ -1,7 +1,7 @@
 # AI Book Shelf / AI 书架
 
 [![GitHub](https://img.shields.io/badge/GitHub-0avatar0%2Fdsh--ai--book--shelf-181717?logo=github)](https://github.com/0avatar0/dsh-ai-book-shelf)
-[![Release](https://img.shields.io/badge/release-v2.6.5-2ea44f)](https://github.com/0avatar0/dsh-ai-book-shelf/releases/tag/v2.6.5)
+[![Release](https://img.shields.io/badge/release-v2.6.6-2ea44f)](https://github.com/0avatar0/dsh-ai-book-shelf/releases/tag/v2.6.6)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 A persistent DSH Web UI plugin that adds a full-page multi-format reader to the
@@ -11,9 +11,9 @@ comparison.
 
 ## Install
 
-1. Download `dsh-ai-book-shelf-2.6.5.tgz` from the
-   [latest release](https://github.com/0avatar0/dsh-ai-book-shelf/releases/tag/v2.6.5),
-   or install from npm with `dsh-ai-book-shelf@2.6.5`.
+1. Download `dsh-ai-book-shelf-2.6.6.tgz` from the
+   [latest release](https://github.com/0avatar0/dsh-ai-book-shelf/releases/tag/v2.6.6),
+   or install from npm with `dsh-ai-book-shelf@2.6.6`.
 2. In DSH open **Plugins → Add plugin** and choose the downloaded tgz, or paste
    the npm package spec.
 3. Reload the plugin and open **AI 书架 / AI Book Shelf** in the sidebar.

@@ -1996,6 +1996,73 @@ function createHandler(ctx, config) {
     return { matches, total: matches.length, query }
   }
 
+  async function streamDossierSearch(folderId, query, res) {
+    const archiveDir = await ensureArchiveDir(config, ctx)
+    const library = await readDossierLibrary(archiveDir)
+    const terms = [...new Set([query, traditionalizeChinese(query)])].filter((entry) => entry.trim() !== '')
+    const needles = terms.map((entry) => entry.toLowerCase())
+    const docs = library.items.filter((item) => item.kind === 'document' && (folderId === '' || item.folderId === folderId))
+    let closed = false
+    res.on('close', () => { if (!res.writableEnded) closed = true })
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+      'X-Content-Type-Options': 'nosniff',
+    })
+    if (typeof res.flushHeaders === 'function') res.flushHeaders()
+    await writeSse(res, ': connected\n\n')
+    let total = 0
+    try {
+      for (const item of docs) {
+        if (closed) break
+        const text = await dossierTextForItem(item, archiveDir)
+        const lower = text.toLowerCase()
+        let best = -1
+        for (const needle of needles) {
+          const at = lower.indexOf(needle)
+          if (at !== -1 && (best === -1 || at < best)) best = at
+        }
+        if (best === -1) continue
+        const start = Math.max(0, best - 90)
+        const match = { id: item.id, title: item.title, folderId: item.folderId ?? '', snippet: text.slice(start, best + 180).replace(/\s+/g, ' ').trim() }
+        total += 1
+        if (!(await writeSse(res, `data: ${JSON.stringify({ type: 'match', match })}\n\n`))) break
+        if (total >= 60) break
+      }
+      if (!closed) {
+        await writeSse(res, `data: ${JSON.stringify({ type: 'done', total, query })}\n\n`)
+        res.end()
+      }
+    } catch (error) {
+      if (!closed) {
+        await writeSse(res, `event: error\ndata: ${JSON.stringify({ error: publicErrorMessage(error) })}\n\n`)
+        res.end()
+      }
+    }
+  }
+
+  async function clearDossiers(scope) {
+    const archiveDir = await ensureArchiveDir(config, ctx)
+    const library = await readDossierLibrary(archiveDir)
+    const targets = library.items.filter((item) => item.kind === 'document' && (scope === 'all' || item.folderId === scope))
+    if (targets.length === 0) return { cleared: 0 }
+    const root = await ensureDossierDirs(archiveDir)
+    const trash = path.join(root, 'trash')
+    await fs.mkdir(trash, { recursive: true })
+    for (const item of targets) {
+      if (typeof item.path === 'string' && item.path !== '') {
+        try { await fs.rename(item.path, path.join(trash, `${Date.now()}-${path.basename(item.path)}`)) } catch { /* already gone */ }
+      }
+      store.remove(item.id)
+    }
+    const ids = new Set(targets.map((item) => item.id))
+    library.items = library.items.filter((item) => !ids.has(item.id))
+    await writeDossierLibrary(archiveDir, library)
+    return { cleared: targets.length }
+  }
+
   async function dossierSummary(req, res) {
     const payload = await readJson(req)
     const folderId = typeof payload.folderId === 'string' ? payload.folderId : ''
@@ -2692,6 +2759,21 @@ function createHandler(ctx, config) {
         const payload = await readJson(req)
         const id = typeof payload.id === 'string' ? payload.id : ''
         sendJson(res, 200, await deleteDossier(id))
+        return
+      }
+
+      if (method === 'GET' && pathname === '/dossiers/search/stream') {
+        const folder = (url.searchParams.get('folder') ?? '').trim()
+        const query = (url.searchParams.get('q') ?? '').trim()
+        if (query === '') throw new HttpError(400, 'EMPTY_QUERY', '搜索内容不能为空')
+        await streamDossierSearch(folder, query, res)
+        return
+      }
+
+      if (method === 'POST' && pathname === '/dossiers/clear') {
+        const payload = await readJson(req)
+        const scope = typeof payload.folderId === 'string' ? payload.folderId : ''
+        sendJson(res, 200, await clearDossiers(scope))
         return
       }
 

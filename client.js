@@ -149,6 +149,13 @@ window.__ModuleLoader__.load({
       'dossiers.summaryTitle': 'AI 卷宗总结',
       'dossiers.summarySearchTitle': 'AI 总结搜索结果',
       'dossiers.summarizing': '正在分析卷宗…',
+      'dossiers.searching': '搜索中…',
+      'dossiers.stopSearch': '停止搜索',
+      'dossiers.searchCount': '找到 {count} 个',
+      'dossiers.clear': '清空卷宗',
+      'dossiers.clearTitle': '清空当前卷宗？',
+      'dossiers.clearHint': '将把当前范围内的 {count} 个卷宗文件移到回收目录；文件夹和 Skill 会保留。',
+      'dossiers.clearConfirm': '确认清空',
       'dossiers.open': '打开阅读',
       'dossiers.openHint': '点击打开阅读',
       'dossiers.openFailed': '卷宗打开失败',
@@ -390,6 +397,13 @@ window.__ModuleLoader__.load({
       'dossiers.summaryTitle': 'AI dossier summary',
       'dossiers.summarySearchTitle': 'AI search summary',
       'dossiers.summarizing': 'Analyzing dossiers…',
+      'dossiers.searching': 'Searching…',
+      'dossiers.stopSearch': 'Stop search',
+      'dossiers.searchCount': '{count} found',
+      'dossiers.clear': 'Clear dossiers',
+      'dossiers.clearTitle': 'Clear this dossier folder?',
+      'dossiers.clearHint': 'Move {count} dossier files in the current scope to the trash; folders and skills are kept.',
+      'dossiers.clearConfirm': 'Clear',
       'dossiers.open': 'Open',
       'dossiers.openHint': 'Click to open',
       'dossiers.openFailed': 'Could not open dossier',
@@ -983,6 +997,7 @@ window.__ModuleLoader__.load({
 .epub-dialog-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: rgba(0,0,0,.35); }
 .epub-dialog { width: min(380px, calc(100% - 32px)); padding: 16px; border: 1px solid var(--epub-line-strong); border-radius: 12px; background: var(--epub-surface); box-shadow: 0 20px 50px -18px rgba(0,0,0,.6); }
 .epub-dialog h3 { margin: 0 0 10px; font-size: 13px; }
+.epub-dialog-message { margin: 0 0 12px; color: var(--epub-muted); font-size: 10.5px; line-height: 1.6; }
 .epub-dialog-input { width: 100%; height: 34px; padding: 0 9px; border: 1px solid var(--epub-line); border-radius: 7px; outline: 0; background: var(--dsw-alias-bg-base); color: var(--epub-text); font-size: 11px; }
 .epub-dialog-input:focus { border-color: color-mix(in srgb, var(--epub-accent) 45%, var(--epub-line)); }
 .epub-dialog-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 12px; }
@@ -1004,6 +1019,10 @@ window.__ModuleLoader__.load({
 .epub-dossier-skill-empty { margin: 3px 0 0; color: var(--epub-muted); font-size: 8.5px; line-height: 1.5; }
 .epub-dossier-skill.is-empty { color: var(--epub-muted); font-style: italic; font-size: 8px; }
 .epub-dossier-importing { display: flex; align-items: center; gap: 7px; margin: 0 0 9px; padding: 7px 9px; border: 1px solid var(--epub-line); border-radius: 7px; background: var(--epub-surface); color: var(--epub-muted); font-size: 9.5px; }
+.epub-dossier-searching { display: inline-flex; align-items: center; gap: 5px; color: var(--epub-muted); font-size: 9px; white-space: nowrap; }
+.epub-dossier-search-count { color: var(--epub-muted); font-size: 9px; white-space: nowrap; }
+.epub-btn-danger { border-color: color-mix(in srgb, var(--epub-danger) 28%, var(--epub-line)); color: var(--epub-danger); background: transparent; }
+.epub-btn-danger:hover { background: color-mix(in srgb, var(--epub-danger) 8%, transparent); }
 .epub-skill-editor { display: flex; flex-direction: column; width: min(620px, 100%); max-height: min(82vh, 680px); border: 1px solid var(--epub-line-strong); border-radius: 13px; background: var(--epub-surface); box-shadow: 0 22px 60px -18px rgba(0,0,0,.6); }
 .epub-skill-editor header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 14px 16px 0; }
 .epub-skill-editor h3 { margin: 2px 0 0; font-size: 15px; }
@@ -3023,10 +3042,12 @@ window.__ModuleLoader__.load({
       const [contextMenu, setContextMenu] = React.useState(null)
       const [importFolderId, setImportFolderId] = React.useState(null)
       const [expandedFolders, setExpandedFolders] = React.useState(() => new Set())
+      const [clearConfirm, setClearConfirm] = React.useState(false)
       const [skillEditor, setSkillEditor] = React.useState(null)
       const [summary, setSummary] = React.useState({ open: false, status: 'idle', text: '', title: '', error: '' })
       const fileRef = React.useRef(null)
       const summaryAbort = React.useRef(null)
+      const searchAbort = React.useRef(null)
 
       const load = React.useCallback(async () => {
         setState((current) => ({ ...current, status: current.items.length === 0 ? 'loading' : current.status, error: '' }))
@@ -3052,11 +3073,21 @@ window.__ModuleLoader__.load({
         setExpandedFolders((current) => new Set(current).add(activeFolder))
       }, [activeFolder])
 
+      React.useEffect(() => {
+        searchAbort.current?.abort()
+        searchAbort.current = null
+      }, [activeFolder])
+
+      React.useEffect(() => () => {
+        searchAbort.current?.abort()
+        summaryAbort.current?.abort()
+      }, [])
+
       const folderId = activeFolder === 'all' || activeFolder === 'root' ? '' : activeFolder
       const folder = state.folders.find((entry) => entry.id === activeFolder)
       const folderLabel = activeFolder === 'all' ? t('dossiers.all') : activeFolder === 'root' ? t('dossiers.root') : folder?.name ?? t('dossiers.title')
       const documents = state.items.filter((item) => item.kind === 'document' && (activeFolder === 'all' || item.folderId === folderId))
-      const shown = search.query !== '' && search.results.length > 0 ? search.results : documents
+      const shown = search.query !== '' ? search.results : documents
 
       function skillsFor(id) {
         return state.items.filter((item) => item.kind === 'skill' && item.folderId === id)
@@ -3153,16 +3184,42 @@ window.__ModuleLoader__.load({
         }
       }
 
+      function stopSearch() {
+        searchAbort.current?.abort()
+        searchAbort.current = null
+        setSearch((current) => ({ ...current, busy: false }))
+      }
+
       async function runSearch(event) {
         if (event !== undefined) event.preventDefault()
         const value = query.trim()
-        if (value === '') { setSearch({ busy: false, results: [], error: '', query: '' }); return }
-        setSearch((current) => ({ ...current, busy: true, error: '', query: value }))
+        if (value === '') { stopSearch(); setSearch({ busy: false, results: [], error: '', query: '' }); return }
+        searchAbort.current?.abort()
+        const controller = new AbortController()
+        searchAbort.current = controller
+        setSearch({ busy: true, results: [], error: '', query: value })
         try {
-          const data = await apiGet(`/dossiers/search?folder=${encodeURIComponent(folderId)}&q=${encodeURIComponent(value)}`)
-          setSearch({ busy: false, results: data.matches ?? [], error: '', query: value })
+          await apiStreamSearch(`/dossiers/search/stream?folder=${encodeURIComponent(folderId)}&q=${encodeURIComponent(value)}`, {
+            signal: controller.signal,
+            onEvent: (streamEvent) => {
+              if (streamEvent.type === 'match' && streamEvent.match !== undefined) {
+                setSearch((current) => ({ ...current, results: [...current.results, streamEvent.match] }))
+              } else if (streamEvent.type === 'done') {
+                setSearch((current) => ({ ...current, busy: false }))
+              } else if (streamEvent.type === 'error') {
+                setSearch((current) => ({ ...current, busy: false, error: String(streamEvent.error ?? '搜索失败') }))
+              }
+            },
+          })
+          setSearch((current) => ({ ...current, busy: false }))
         } catch (reason) {
-          setSearch({ busy: false, results: [], error: reason instanceof Error ? reason.message : String(reason), query: value })
+          if (controller.signal.aborted) {
+            setSearch((current) => ({ ...current, busy: false }))
+            return
+          }
+          setSearch((current) => ({ ...current, busy: false, error: reason instanceof Error ? reason.message : String(reason) }))
+        } finally {
+          if (searchAbort.current === controller) searchAbort.current = null
         }
       }
 
@@ -3236,6 +3293,19 @@ window.__ModuleLoader__.load({
         setSummary({ open: false, status: 'idle', text: '', title: '', error: '' })
       }
 
+      async function clearCurrentFolder() {
+        try {
+          await apiPost('/dossiers/clear', { folderId: activeFolder === 'all' ? 'all' : folderId })
+          setClearConfirm(false)
+          stopSearch()
+          setSearch({ busy: false, results: [], error: '', query: '' })
+          setQuery('')
+          await load()
+        } catch (reason) {
+          setError(reason instanceof Error ? reason.message : String(reason))
+        }
+      }
+
       function summaryScopeIds() {
         if (search.query !== '' && search.results.length > 0) return search.results.map((entry) => entry.id)
         return []
@@ -3291,6 +3361,15 @@ window.__ModuleLoader__.load({
                   h(IconSearch, { size: 14 }),
                   h('input', { value: query, onChange: (event) => setQuery(event.target.value), placeholder: t('dossiers.searchPlaceholder'), 'aria-label': t('dossiers.searchPlaceholder'), type: 'search' }),
                 ),
+                search.busy
+                  ? h(React.Fragment, null,
+                      h('span', { className: 'epub-dossier-searching' }, h(Spinner, null), t('dossiers.searching')),
+                      h('button', { type: 'button', className: 'epub-btn', onClick: stopSearch }, t('dossiers.stopSearch')),
+                    )
+                  : search.query !== ''
+                    ? h('span', { className: 'epub-dossier-search-count' }, format(t('dossiers.searchCount'), { count: search.results.length }))
+                    : null,
+                h('button', { type: 'button', className: 'epub-btn epub-btn-danger', onClick: () => setClearConfirm(true), disabled: documents.length === 0 }, t('dossiers.clear')),
                 h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => void startSummary({ ids: summaryScopeIds(), query: search.query, title: search.query === '' ? t('dossiers.summaryTitle') : t('dossiers.summarySearchTitle') }), disabled: documents.length === 0 && search.results.length === 0 }, h(IconSparkles, { size: 13 }), t('dossiers.summary')),
               ),
             ),
@@ -3303,7 +3382,9 @@ window.__ModuleLoader__.load({
               ? h('div', { className: 'epub-paper-empty' }, h(Spinner, null), h('p', null, t('papers.importing')))
               : state.status === 'error'
                 ? h(ErrorBanner, { title: t('dossiers.importFailed'), message: state.error, actionLabel: t('papers.retry'), onAction: () => void load() })
-                : shown.length === 0 && !importing
+                : search.busy && shown.length === 0
+                  ? h('div', { className: 'epub-paper-empty' }, h(Spinner, null), h('p', null, t('dossiers.searching')))
+                  : shown.length === 0 && !importing
                   ? h('div', { className: 'epub-paper-empty' }, h(IconFolderPlus, { size: 30 }), h('h3', null, search.query !== '' ? t('dossiers.searchEmpty') : t('dossiers.empty')), h('p', null, search.query !== '' ? t('dossiers.searchEmptyHint') : t('dossiers.emptyHint')))
                   : shown.length > 0
                     ? h('div', { className: 'epub-dossier-grid' },
@@ -3370,6 +3451,18 @@ window.__ModuleLoader__.load({
                 h('div', { className: 'epub-dialog-actions' },
                   h('button', { type: 'button', className: 'epub-btn', onClick: () => setDialog(null) }, t('papers.cancel')),
                   h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => void submitDialog() }, t('papers.confirm')),
+                ),
+              ),
+            )
+          : null,
+        clearConfirm
+          ? h('div', { className: 'epub-dialog-backdrop', onMouseDown: (event) => { if (event.target === event.currentTarget) setClearConfirm(false) } },
+              h('div', { className: 'epub-dialog' },
+                h('h3', null, t('dossiers.clearTitle')),
+                h('p', { className: 'epub-dialog-message' }, format(t('dossiers.clearHint'), { count: documents.length })),
+                h('div', { className: 'epub-dialog-actions' },
+                  h('button', { type: 'button', className: 'epub-btn', onClick: () => setClearConfirm(false) }, t('papers.cancel')),
+                  h('button', { type: 'button', className: 'epub-btn epub-btn-danger', onClick: () => void clearCurrentFolder() }, t('dossiers.clearConfirm')),
                 ),
               ),
             )
