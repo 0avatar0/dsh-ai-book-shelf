@@ -136,6 +136,8 @@ window.__ModuleLoader__.load({
       'dossiers.emptyHint': '导入卷宗文件；可以按住 Ctrl / Cmd 或按 Ctrl+A 全选多个文件。文件名正好是 SKILL.md 的 Markdown 会作为该文件夹的 Skill。',
       'dossiers.skillHint': '提示：一次可全选多个文件；把 SKILL.md 和卷宗一起导入，AI 总结时会优先遵循该 Skill。',
       'dossiers.skills': '文件夹 Skill',
+      'dossiers.expand': '展开 Skill',
+      'dossiers.collapse': '收起 Skill',
       'dossiers.createSkill': '新建 Skill',
       'dossiers.noSkill': '还没有 Skill。新建文件夹会自动生成一个空 Skill。',
       'dossiers.skillEmptyHint': '空 Skill，点击填写',
@@ -375,6 +377,8 @@ window.__ModuleLoader__.load({
       'dossiers.emptyHint': 'Import dossier files; hold Ctrl / Cmd or press Ctrl+A to select many. A Markdown file named SKILL.md becomes a folder skill.',
       'dossiers.skillHint': 'Tip: select many files at once; import SKILL.md with the dossiers and AI summaries will follow it.',
       'dossiers.skills': 'Folder skills',
+      'dossiers.expand': 'Expand skills',
+      'dossiers.collapse': 'Collapse skills',
       'dossiers.createSkill': 'New skill',
       'dossiers.noSkill': 'No skill yet. Creating a folder adds an empty skill automatically.',
       'dossiers.skillEmptyHint': 'Empty skill — click to fill in',
@@ -941,6 +945,10 @@ window.__ModuleLoader__.load({
 .epub-papers-head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .epub-papers-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 185px minmax(0, 1fr); }
 .epub-paper-folders { overflow: auto; padding: 12px 10px; border-right: 1px solid var(--epub-line); background: var(--epub-surface); }
+.epub-dossier-folder-group { margin: 0; }
+.epub-dossier-expand { display: grid; place-items: center; width: 18px; height: 28px; flex: none; padding: 0; border: 0; background: transparent; color: var(--epub-muted); font-size: 11px; }
+.epub-dossier-expand:hover { color: var(--epub-text); }
+.epub-dossier-folder-skills { margin: 1px 0 5px 19px; padding: 3px 0 3px 7px; border-left: 1px solid var(--epub-line); }
 .epub-paper-folder-top { display: flex; align-items: center; gap: 2px; }
 .epub-paper-folder-top .epub-paper-folder { flex: 1; }
 .epub-paper-folder-add { display: grid; place-items: center; width: 27px; height: 30px; flex: none; border: 0; border-radius: 7px; background: transparent; color: var(--epub-muted); }
@@ -3013,6 +3021,7 @@ window.__ModuleLoader__.load({
       const [dialog, setDialog] = React.useState(null)
       const [contextMenu, setContextMenu] = React.useState(null)
       const [importFolderId, setImportFolderId] = React.useState(null)
+      const [expandedFolders, setExpandedFolders] = React.useState(() => new Set())
       const [skillEditor, setSkillEditor] = React.useState(null)
       const [summary, setSummary] = React.useState({ open: false, status: 'idle', text: '', title: '', error: '' })
       const fileRef = React.useRef(null)
@@ -3037,12 +3046,45 @@ window.__ModuleLoader__.load({
         return () => window.removeEventListener('click', close)
       }, [contextMenu])
 
+      React.useEffect(() => {
+        if (activeFolder === 'all' || activeFolder === '') return
+        setExpandedFolders((current) => new Set(current).add(activeFolder))
+      }, [activeFolder])
+
       const folderId = activeFolder === 'all' || activeFolder === 'root' ? '' : activeFolder
       const folder = state.folders.find((entry) => entry.id === activeFolder)
       const folderLabel = activeFolder === 'all' ? t('dossiers.all') : activeFolder === 'root' ? t('dossiers.root') : folder?.name ?? t('dossiers.title')
       const documents = state.items.filter((item) => item.kind === 'document' && (activeFolder === 'all' || item.folderId === folderId))
-      const skills = state.items.filter((item) => item.kind === 'skill' && (activeFolder === 'all' || item.folderId === folderId))
       const shown = search.query !== '' && search.results.length > 0 ? search.results : documents
+
+      function skillsFor(id) {
+        return state.items.filter((item) => item.kind === 'skill' && item.folderId === id)
+      }
+
+      function toggleFolder(id) {
+        setExpandedFolders((current) => {
+          const next = new Set(current)
+          if (next.has(id)) next.delete(id)
+          else next.add(id)
+          return next
+        })
+      }
+
+      function renderFolderSkills(id) {
+        const list = skillsFor(id)
+        return h('div', { className: 'epub-dossier-folder-skills' },
+          list.length === 0
+            ? h('p', { className: 'epub-dossier-skill-empty' }, t('dossiers.noSkill'))
+            : list.map((item) => h('button', {
+                key: item.id,
+                type: 'button',
+                className: cn('epub-dossier-skill', item.preview === '' && 'is-empty'),
+                onClick: () => void openSkillEditor(item),
+                onContextMenu: (event) => openContext(event, 'item', { itemId: item.id }),
+                title: item.preview || t('dossiers.skillEmptyHint'),
+              }, h(IconSparkles, { size: 12 }), item.title)),
+        )
+      }
 
       function openContext(event, kind, data = {}) {
         event.preventDefault()
@@ -3058,11 +3100,18 @@ window.__ModuleLoader__.load({
         if (dialog === null || dialog.value.trim() === '') return
         const name = dialog.value.trim()
         try {
-          if (dialog.mode === 'folder') await apiPost('/dossiers/folder', { name })
-          else if (dialog.mode === 'folderRename') await apiPost('/dossiers/folder/rename', { id: dialog.id, name })
+          let createdFolderId = ''
+          if (dialog.mode === 'folder') {
+            const data = await apiPost('/dossiers/folder', { name })
+            createdFolderId = data?.folder?.id ?? ''
+          } else if (dialog.mode === 'folderRename') await apiPost('/dossiers/folder/rename', { id: dialog.id, name })
           else if (dialog.mode === 'rename') await apiPost('/dossiers/rename', { id: dialog.id, title: name })
           setDialog(null)
           await load()
+          if (createdFolderId !== '') {
+            setActiveFolder(createdFolderId)
+            setExpandedFolders((current) => new Set(current).add(createdFolderId))
+          }
         } catch (reason) {
           setError(reason instanceof Error ? reason.message : String(reason))
         }
@@ -3128,9 +3177,10 @@ window.__ModuleLoader__.load({
         }
       }
 
-      async function createSkill() {
+      async function createSkill(target = folderId) {
         try {
-          await apiPost('/dossiers/skill/create', { folderId })
+          await apiPost('/dossiers/skill/create', { folderId: target })
+          setExpandedFolders((current) => new Set(current).add(target))
           await load()
         } catch (reason) {
           setError(reason instanceof Error ? reason.message : String(reason))
@@ -3204,25 +3254,24 @@ window.__ModuleLoader__.load({
               h('button', { type: 'button', className: cn('epub-paper-folder', activeFolder === 'all' && 'is-active'), onClick: () => { setActiveFolder('all'); setSearch({ busy: false, results: [], error: '', query: '' }); setQuery('') } }, t('dossiers.all'), h('span', null, String(state.items.filter((item) => item.kind === 'document').length))),
               h('button', { type: 'button', className: 'epub-paper-folder-add', onClick: () => openDialog('folder'), title: t('dossiers.newFolder'), 'aria-label': t('dossiers.newFolder') }, h(IconFolderPlus, { size: 15 })),
             ),
-            h('button', { type: 'button', className: cn('epub-paper-folder', activeFolder === 'root' && 'is-active'), onClick: () => { setActiveFolder('root'); setSearch({ busy: false, results: [], error: '', query: '' }); setQuery('') } }, t('dossiers.root'), h('span', null, String(state.items.filter((item) => item.kind === 'document' && item.folderId === '').length))),
-            state.folders.map((entry) =>
-              h('div', { key: entry.id, className: cn('epub-paper-folder-wrap', activeFolder === entry.id && 'is-active'), onContextMenu: (event) => openContext(event, 'folder', { folderId: entry.id }) },
-                h('button', { type: 'button', className: cn('epub-paper-folder', activeFolder === entry.id && 'is-active'), onClick: () => { setActiveFolder(entry.id); setSearch({ busy: false, results: [], error: '', query: '' }); setQuery('') } }, entry.name, h('span', null, String(state.items.filter((item) => item.kind === 'document' && item.folderId === entry.id).length))),
-                h('button', { type: 'button', className: 'epub-paper-folder-rename', onClick: () => openDialog('folderRename', entry.name, entry.id), title: t('dossiers.renameFolder') }, '✎'),
+            h('div', { className: 'epub-dossier-folder-group' },
+              h('div', { className: cn('epub-paper-folder-wrap', activeFolder === 'root' && 'is-active') },
+                h('button', { type: 'button', className: 'epub-dossier-expand', onClick: () => toggleFolder('root'), title: expandedFolders.has('root') ? t('dossiers.collapse') : t('dossiers.expand'), 'aria-label': expandedFolders.has('root') ? t('dossiers.collapse') : t('dossiers.expand') }, expandedFolders.has('root') ? '▾' : '▸'),
+                h('button', { type: 'button', className: cn('epub-paper-folder', activeFolder === 'root' && 'is-active'), onClick: () => { setActiveFolder('root'); setSearch({ busy: false, results: [], error: '', query: '' }); setQuery('') } }, t('dossiers.root'), h('span', null, String(state.items.filter((item) => item.kind === 'document' && item.folderId === '').length))),
+                h('button', { type: 'button', className: 'epub-paper-folder-rename', onClick: () => void createSkill(''), title: t('dossiers.createSkill') }, '+'),
               ),
+              expandedFolders.has('root') ? renderFolderSkills('') : null,
             ),
-            h('div', { className: 'epub-dossier-skills' },
-              h('div', { className: 'epub-dossier-skills-head' }, t('dossiers.skills'), h('button', { type: 'button', className: 'epub-dossier-skill-add', onClick: () => void createSkill(), title: t('dossiers.createSkill') }, '+')),
-              skills.length === 0
-                ? h('p', { className: 'epub-dossier-skill-empty' }, t('dossiers.noSkill'))
-                : skills.map((item) => h('button', {
-                    key: item.id,
-                    type: 'button',
-                    className: cn('epub-dossier-skill', item.preview === '' && 'is-empty'),
-                    onClick: () => void openSkillEditor(item),
-                    onContextMenu: (event) => openContext(event, 'item', { itemId: item.id }),
-                    title: item.preview || t('dossiers.skillEmptyHint'),
-                  }, h(IconSparkles, { size: 12 }), item.title)),
+            state.folders.map((entry) =>
+              h('div', { key: entry.id, className: 'epub-dossier-folder-group', onContextMenu: (event) => openContext(event, 'folder', { folderId: entry.id }) },
+                h('div', { className: cn('epub-paper-folder-wrap', activeFolder === entry.id && 'is-active') },
+                  h('button', { type: 'button', className: 'epub-dossier-expand', onClick: () => toggleFolder(entry.id), title: expandedFolders.has(entry.id) ? t('dossiers.collapse') : t('dossiers.expand'), 'aria-label': expandedFolders.has(entry.id) ? t('dossiers.collapse') : t('dossiers.expand') }, expandedFolders.has(entry.id) ? '▾' : '▸'),
+                  h('button', { type: 'button', className: cn('epub-paper-folder', activeFolder === entry.id && 'is-active'), onClick: () => { setActiveFolder(entry.id); setSearch({ busy: false, results: [], error: '', query: '' }); setQuery('') } }, entry.name, h('span', null, String(state.items.filter((item) => item.kind === 'document' && item.folderId === entry.id).length))),
+                  h('button', { type: 'button', className: 'epub-paper-folder-rename', onClick: () => openDialog('folderRename', entry.name, entry.id), title: t('dossiers.renameFolder') }, '✎'),
+                  h('button', { type: 'button', className: 'epub-paper-folder-rename', onClick: () => void createSkill(entry.id), title: t('dossiers.createSkill') }, '+'),
+                ),
+                expandedFolders.has(entry.id) ? renderFolderSkills(entry.id) : null,
+              ),
             ),
           ),
           h('main', { className: 'epub-paper-main', onContextMenu: (event) => openContext(event, 'library') },
