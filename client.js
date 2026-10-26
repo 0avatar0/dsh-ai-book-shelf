@@ -218,6 +218,14 @@ window.__ModuleLoader__.load({
       'reader.next': '下一章',
       'reader.fontSmaller': '减小字号',
       'reader.fontLarger': '放大字号',
+      'reader.zoomHint': 'Ctrl / ⌘ + 鼠标滚轮调整字号',
+      'reader.zoomHintShort': '+ 滚轮',
+      'reader.settings': '阅读设置',
+      'reader.booksDir': '书籍目录',
+      'reader.booksDirHint': '修改后书架会扫描并优先保存到这个目录；留空使用默认目录：{path}',
+      'reader.settingsSaved': '书籍目录已保存，返回书架后生效',
+      'reader.save': '保存',
+      'reader.cancel': '取消',
       'reader.ai': 'AI 解释',
       'reader.find': '全书搜索',
       'reader.findPlaceholder': '搜索全书文字…',
@@ -466,6 +474,14 @@ window.__ModuleLoader__.load({
       'reader.next': 'Next chapter',
       'reader.fontSmaller': 'Smaller text',
       'reader.fontLarger': 'Larger text',
+      'reader.zoomHint': 'Ctrl / ⌘ + mouse wheel to resize text',
+      'reader.zoomHintShort': '+ wheel',
+      'reader.settings': 'Reader settings',
+      'reader.booksDir': 'Books folder',
+      'reader.booksDirHint': 'The shelf scans and saves books here. Leave empty for the default: {path}',
+      'reader.settingsSaved': 'Books folder saved; return to the shelf to apply',
+      'reader.save': 'Save',
+      'reader.cancel': 'Cancel',
       'reader.ai': 'Explain',
       'reader.find': 'Find in book',
       'reader.findPlaceholder': 'Search the whole book…',
@@ -762,6 +778,15 @@ window.__ModuleLoader__.load({
 .epub-reader-book-title { font-size: 13.5px; line-height: 1.4; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .epub-reader-book-sub { margin-top: 2px; color: var(--epub-muted); font-size: 10.5px; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .epub-reader-head-right { display: flex; align-items: center; gap: 7px; flex: none; }
+.epub-zoom-hint { display: inline-flex; align-items: center; gap: 2px; color: var(--epub-muted); font-size: 8.5px; white-space: nowrap; }
+.epub-reader-settings { width: min(560px, 100%); padding: 16px; border: 1px solid var(--epub-line-strong); border-radius: 13px; background: var(--epub-surface); box-shadow: 0 22px 60px -18px rgba(0,0,0,.6); }
+.epub-reader-settings header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.epub-reader-settings h3 { margin: 2px 0 0; font-size: 15px; }
+.epub-reader-settings-label { display: block; margin-bottom: 5px; color: var(--epub-muted); font-size: 9px; text-transform: uppercase; letter-spacing: .06em; }
+.epub-reader-settings-input { width: 100%; height: 34px; padding: 0 9px; border: 1px solid var(--epub-line); border-radius: 7px; outline: 0; background: var(--dsw-alias-bg-base); color: var(--epub-text); font-size: 11px; }
+.epub-reader-settings-input:focus { border-color: color-mix(in srgb, var(--epub-accent) 45%, var(--epub-line)); }
+.epub-reader-settings-hint { margin: 7px 0 0; color: var(--epub-muted); font-size: 9px; line-height: 1.55; overflow-wrap: anywhere; }
+.epub-reader-settings-error { margin: 8px 0 0; color: var(--epub-danger); font-size: 9.5px; line-height: 1.5; }
 .epub-kbd { margin-left: 3px; padding: 1px 4px; border: 1px solid var(--epub-line); border-radius: 4px; color: var(--epub-muted); font-family: inherit; font-size: 8.5px; font-weight: 500; line-height: 1.4; }
 .epub-find-panel { position: absolute; top: 68px; right: 18px; z-index: 45; display: flex; flex-direction: column; width: min(430px, calc(100% - 36px)); max-height: min(520px, calc(100% - 90px)); border: 1px solid var(--epub-line-strong); border-radius: 12px; background: var(--epub-surface); box-shadow: 0 18px 45px -18px rgba(0,0,0,.55); overflow: hidden; }
 .epub-find-head { display: flex; align-items: center; gap: 8px; padding: 10px; border-bottom: 1px solid var(--epub-line); }
@@ -1092,6 +1117,7 @@ window.__ModuleLoader__.load({
   .epub-dossier-search input { width: 100%; min-width: 0; }
   .epub-dossier-grid { grid-template-columns: 1fr; }
   .epub-dossier-summary { max-height: 88vh; }
+  .epub-zoom-hint { display: none; }
   .epub-paper-folders { display: flex; gap: 4px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--epub-line); }
   .epub-paper-folder-wrap { flex: none; }
   .epub-paper-folder-top { flex: none; }
@@ -1678,6 +1704,13 @@ window.__ModuleLoader__.load({
 
     function IconPlus(props) {
       return iconBase(props ?? {}, [h('path', { key: 'a', d: 'M12 5v14M5 12h14' })])
+    }
+
+    function IconSettings(props) {
+      return iconBase(props ?? {}, [
+        h('circle', { key: 'a', cx: 12, cy: 12, r: 3.2 }),
+        h('path', { key: 'b', d: 'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.09a2 2 0 0 1 1 1.74v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z' }),
+      ])
     }
 
     function IconStopCircle(props) {
@@ -4098,6 +4131,11 @@ window.__ModuleLoader__.load({
       const [annotationStatus, setAnnotationStatus] = React.useState('loading')
       const [annotationError, setAnnotationError] = React.useState('')
       const [ai, setAi] = React.useState({ open: true, view: 'history', status: 'idle', selection: null, turns: [], annotationId: null, error: '', lastQuestion: '' })
+      const [settingsOpen, setSettingsOpen] = React.useState(false)
+      const [booksDir, setBooksDir] = React.useState('')
+      const [defaultBooksDir, setDefaultBooksDir] = React.useState('')
+      const [settingsSaving, setSettingsSaving] = React.useState(false)
+      const [settingsError, setSettingsError] = React.useState('')
       const [findOpen, setFindOpen] = React.useState(false)
       const [findQuery, setFindQuery] = React.useState('')
       const [findStatus, setFindStatus] = React.useState('idle')
@@ -4763,6 +4801,33 @@ window.__ModuleLoader__.load({
         })
       }
 
+      async function openReaderSettings() {
+        setSettingsOpen(true)
+        setSettingsError('')
+        try {
+          const data = await apiGet('/settings')
+          setBooksDir(typeof data.booksDir === 'string' ? data.booksDir : '')
+          setDefaultBooksDir(typeof data.defaultDir === 'string' ? data.defaultDir : '')
+        } catch (reason) {
+          setSettingsError(reason instanceof Error ? reason.message : String(reason))
+        }
+      }
+
+      async function saveReaderSettings() {
+        setSettingsSaving(true)
+        setSettingsError('')
+        try {
+          const data = await apiPost('/settings', { booksDir: booksDir.trim() })
+          setBooksDir(typeof data.booksDir === 'string' ? data.booksDir : '')
+          setSettingsOpen(false)
+          if (onToast !== undefined) onToast(t('reader.settingsSaved'))
+        } catch (reason) {
+          setSettingsError(reason instanceof Error ? reason.message : String(reason))
+        } finally {
+          setSettingsSaving(false)
+        }
+      }
+
       React.useEffect(() => {
         function onWheel(event) {
           if (!event.ctrlKey && !event.metaKey) return
@@ -4818,8 +4883,10 @@ window.__ModuleLoader__.load({
               h('button', { type: 'button', onClick: () => updateFont(-1), title: t('reader.fontSmaller'), 'aria-label': t('reader.fontSmaller') }, h(IconMinus, { size: 13 })),
               h('button', { type: 'button', onClick: () => updateFont(1), title: t('reader.fontLarger'), 'aria-label': t('reader.fontLarger') }, h(IconPlus, { size: 13 })),
             ),
+            h('span', { className: 'epub-zoom-hint', title: t('reader.zoomHint') }, h('kbd', { className: 'epub-kbd' }, 'Ctrl'), t('reader.zoomHintShort')),
             h('button', { type: 'button', className: cn('epub-ghost-btn', tocOpen && 'is-active'), onClick: () => setTocOpen((value) => !value), title: t('reader.toc'), 'aria-label': t('reader.toc') }, h(IconList, { size: 15 }), h('span', null, t('reader.toc'))),
             h('button', { type: 'button', className: 'epub-ai-trigger', onClick: () => setAi((current) => ({ ...current, open: !current.open })), title: t('reader.ai'), 'aria-label': t('reader.ai') }, h(IconSparkles, { size: 15 }), h('span', null, t('reader.ai'))),
+            h('button', { type: 'button', className: 'epub-ghost-btn', onClick: () => void openReaderSettings(), title: t('reader.settings'), 'aria-label': t('reader.settings') }, h(IconSettings, { size: 15 })),
           ),
         ),
         findOpen
@@ -4999,6 +5066,29 @@ window.__ModuleLoader__.load({
                     className: 'epub-select-quick-btn',
                     onClick: () => void askAi(selection, t(`reader.ask.${key}`)),
                   }, t(`reader.chip.${key}`)),
+                ),
+              ),
+            )
+          : null,
+        settingsOpen
+          ? h('div', { className: 'epub-dialog-backdrop', onMouseDown: (event) => { if (event.target === event.currentTarget) setSettingsOpen(false) } },
+              h('section', { className: 'epub-reader-settings' },
+                h('header', null,
+                  h('div', null, h('p', { className: 'epub-eyebrow' }, 'READER SETTINGS'), h('h3', null, t('reader.settings'))),
+                  h('button', { type: 'button', className: 'epub-icon-btn', onClick: () => setSettingsOpen(false), title: t('reader.close') }, h(IconX, { size: 16 })),
+                ),
+                h('label', { className: 'epub-reader-settings-label' }, t('reader.booksDir')),
+                h('input', {
+                  className: 'epub-reader-settings-input',
+                  value: booksDir,
+                  onChange: (event) => setBooksDir(event.target.value),
+                  placeholder: defaultBooksDir,
+                }),
+                h('p', { className: 'epub-reader-settings-hint' }, format(t('reader.booksDirHint'), { path: defaultBooksDir })),
+                settingsError !== '' ? h('p', { className: 'epub-reader-settings-error' }, settingsError) : null,
+                h('div', { className: 'epub-dialog-actions' },
+                  h('button', { type: 'button', className: 'epub-btn', onClick: () => setSettingsOpen(false) }, t('reader.cancel')),
+                  h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => void saveReaderSettings(), disabled: settingsSaving }, settingsSaving ? '…' : t('reader.save')),
                 ),
               ),
             )

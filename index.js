@@ -7,7 +7,7 @@
  * credential.
  */
 import { createHash } from 'node:crypto'
-import { promises as fs } from 'node:fs'
+import { promises as fs, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { BookError, EpubError, parseBook } from './lib/books.js'
 import { stripTags } from './lib/sanitize.js'
@@ -24,6 +24,7 @@ const MAX_SCAN_DEPTH = 6
 const BOOK_EXTENSIONS = new Set([
   '.epub', '.pdf', '.txt', '.text', '.md', '.markdown', '.html', '.htm', '.xhtml', '.fb2', '.docx',
 ])
+let activeBooksDir = ''
 const SEARCH_TTL_MS = 30 * 60 * 1000
 const MAX_SEARCH_RESULTS = 24
 const DOWNLOAD_TIMEOUT_MS = 180_000
@@ -167,7 +168,7 @@ function firstWorkspaceRoot(ctx) {
   return process.cwd()
 }
 
-function resolveArchiveDir(config, ctx) {
+function defaultArchiveDir(config, ctx) {
   const configuredArchive = typeof config?.archiveDir === 'string' ? config.archiveDir.trim() : ''
   if (configuredArchive !== '') return path.resolve(configuredArchive)
   const configured = configuredLibraryDirs(config)
@@ -178,11 +179,19 @@ function resolveArchiveDir(config, ctx) {
   return path.resolve(firstWorkspaceRoot(ctx))
 }
 
+function resolveArchiveDir(config, ctx) {
+  return defaultArchiveDir(config, ctx)
+}
+
+function resolveBooksDir(config, ctx) {
+  return activeBooksDir !== '' ? path.resolve(activeBooksDir) : defaultArchiveDir(config, ctx)
+}
+
 function normalizeRoots(config, ctx) {
   const configured = configuredLibraryDirs(config)
   // Scan only the archive shelf by default. External books enter the shelf
   // through Open EPUB, which copies them into the archive before opening.
-  if (configured.length === 0) configured.push(resolveArchiveDir(config, ctx))
+  if (configured.length === 0) configured.push(resolveBooksDir(config, ctx))
   const unique = []
   for (const root of configured) {
     const resolved = path.resolve(root)
@@ -229,6 +238,37 @@ async function ensureArchiveDir(config, ctx) {
   } catch (error) {
     throw new HttpError(500, 'ARCHIVE_UNAVAILABLE', `无法创建书架副本目录 ${directory}：${publicErrorMessage(error)}`)
   }
+}
+
+async function ensureBooksDir(config, ctx) {
+  const directory = resolveBooksDir(config, ctx)
+  try {
+    await fs.mkdir(directory, { recursive: true })
+    return await fs.realpath(directory)
+  } catch (error) {
+    throw new HttpError(500, 'BOOKS_DIR_UNAVAILABLE', `无法创建书籍目录 ${directory}：${publicErrorMessage(error)}`)
+  }
+}
+
+function readerSettingsPath(config, ctx) {
+  return path.join(defaultArchiveDir(config, ctx), ANNOTATION_DIRECTORY, 'settings.json')
+}
+
+function readReaderSettingsSync(config, ctx) {
+  try {
+    const value = JSON.parse(readFileSync(readerSettingsPath(config, ctx), 'utf8'))
+    return value !== null && typeof value === 'object' ? value : {}
+  } catch {
+    return {}
+  }
+}
+
+async function writeReaderSettings(config, ctx, settings) {
+  const file = readerSettingsPath(config, ctx)
+  await fs.mkdir(path.dirname(file), { recursive: true })
+  const temporary = `${file}.${process.pid}.tmp`
+  await fs.writeFile(temporary, `${JSON.stringify(settings, null, 2)}\n`, 'utf8')
+  await fs.rename(temporary, file)
 }
 
 /**
@@ -1356,6 +1396,10 @@ async function openModelStream(ctx, route, payload, signal) {
 }
 
 function createHandler(ctx, config) {
+  const savedSettings = readReaderSettingsSync(config, ctx)
+  activeBooksDir = typeof savedSettings.booksDir === 'string' && savedSettings.booksDir.trim() !== ''
+    ? path.resolve(savedSettings.booksDir.trim())
+    : ''
   const store = new BookStore(MAX_OPEN_BOOKS)
   let catalog = new Map()
   const searchCache = new Map()
@@ -1438,9 +1482,9 @@ function createHandler(ctx, config) {
       throw new HttpError(500, 'READ_FAILED', `读取失败：${publicErrorMessage(error)}`)
     }
 
-    const archiveDir = await ensureArchiveDir(config, ctx)
-    if (!isInside(archiveDir, entry.path)) {
-      return await ingestBuffer(buffer, entry.name, archiveDir)
+    const booksDir = await ensureBooksDir(config, ctx)
+    if (!isInside(booksDir, entry.path)) {
+      return await ingestBuffer(buffer, entry.name, booksDir)
     }
 
     let book
@@ -2228,8 +2272,8 @@ function createHandler(ctx, config) {
     }
     const buffer = await readBody(req, MAX_IMPORT_BYTES)
     if (buffer.length === 0) throw new HttpError(400, 'EMPTY_FILE', '没有收到文件内容')
-    const archiveDir = await ensureArchiveDir(config, ctx)
-    return await ingestBuffer(buffer, name, archiveDir)
+    const booksDir = await ensureBooksDir(config, ctx)
+    return await ingestBuffer(buffer, name, booksDir)
   }
 
   function readSearchOptions(url) {
@@ -2331,12 +2375,12 @@ function createHandler(ctx, config) {
         ? lastError
         : new HttpError(502, 'DOWNLOAD_FAILED', '下载失败，请稍后重试')
     }
-    const archiveDir = await ensureArchiveDir(config, ctx)
+    const booksDir = await ensureBooksDir(config, ctx)
     if (downloadFileName === '') {
       const author = item.author === '' ? '' : ` - ${item.author}`
       downloadFileName = `${item.title}${author}.epub`
     }
-    const result = await ingestBuffer(buffer, downloadFileName, archiveDir)
+    const result = await ingestBuffer(buffer, downloadFileName, booksDir)
     return { ...result, source: item.source, sourceName: item.sourceName }
   }
 
@@ -2434,6 +2478,32 @@ function createHandler(ctx, config) {
           roots: normalizeRoots(config, ctx),
           model: route === undefined ? null : route,
         })
+        return
+      }
+
+      if (method === 'GET' && pathname === '/settings') {
+        sendJson(res, 200, { booksDir: resolveBooksDir(config, ctx), defaultDir: defaultArchiveDir(config, ctx) })
+        return
+      }
+
+      if (method === 'POST' && pathname === '/settings') {
+        const payload = await readJson(req)
+        const requested = typeof payload.booksDir === 'string' ? payload.booksDir.trim() : ''
+        let booksDir = ''
+        if (requested !== '') {
+          const target = path.resolve(requested)
+          try {
+            await fs.mkdir(target, { recursive: true })
+            booksDir = await fs.realpath(target)
+          } catch (error) {
+            throw new HttpError(400, 'BOOKS_DIR_UNAVAILABLE', `无法使用书籍目录 ${target}：${publicErrorMessage(error)}`)
+          }
+        }
+        const current = readReaderSettingsSync(config, ctx)
+        await writeReaderSettings(config, ctx, { ...current, booksDir })
+        activeBooksDir = booksDir
+        catalog = new Map()
+        sendJson(res, 200, { booksDir: resolveBooksDir(config, ctx), defaultDir: defaultArchiveDir(config, ctx) })
         return
       }
 
