@@ -25,6 +25,8 @@ const BOOK_EXTENSIONS = new Set([
   '.epub', '.pdf', '.txt', '.text', '.md', '.markdown', '.html', '.htm', '.xhtml', '.fb2', '.docx',
 ])
 let activeBooksDir = ''
+let activePapersDir = ''
+let activeDossiersDir = ''
 const SEARCH_TTL_MS = 30 * 60 * 1000
 const MAX_SEARCH_RESULTS = 24
 const DOWNLOAD_TIMEOUT_MS = 180_000
@@ -1400,6 +1402,12 @@ function createHandler(ctx, config) {
   activeBooksDir = typeof savedSettings.booksDir === 'string' && savedSettings.booksDir.trim() !== ''
     ? path.resolve(savedSettings.booksDir.trim())
     : ''
+  activePapersDir = typeof savedSettings.papersDir === 'string' && savedSettings.papersDir.trim() !== ''
+    ? path.resolve(savedSettings.papersDir.trim())
+    : ''
+  activeDossiersDir = typeof savedSettings.dossiersDir === 'string' && savedSettings.dossiersDir.trim() !== ''
+    ? path.resolve(savedSettings.dossiersDir.trim())
+    : ''
   const store = new BookStore(MAX_OPEN_BOOKS)
   let catalog = new Map()
   const searchCache = new Map()
@@ -1509,7 +1517,7 @@ function createHandler(ctx, config) {
     return { book, copied: false, created: false, copyPath: '' }
   }
 
-  function paperRootFor(archiveDir) { return path.join(archiveDir, '.epub-reader', 'papers') }
+  function paperRootFor(archiveDir) { return activePapersDir !== '' ? path.resolve(activePapersDir) : path.join(archiveDir, '.epub-reader', 'papers') }
 
   async function ensurePaperDirs(archiveDir) {
     const root = paperRootFor(archiveDir)
@@ -1849,7 +1857,7 @@ function createHandler(ctx, config) {
   }
 
   function dossierRootFor(archiveDir) {
-    return path.join(archiveDir, '.epub-reader', 'dossiers')
+    return activeDossiersDir !== '' ? path.resolve(activeDossiersDir) : path.join(archiveDir, '.epub-reader', 'dossiers')
   }
 
   async function ensureDossierDirs(archiveDir) {
@@ -2482,28 +2490,53 @@ function createHandler(ctx, config) {
       }
 
       if (method === 'GET' && pathname === '/settings') {
-        sendJson(res, 200, { booksDir: resolveBooksDir(config, ctx), defaultDir: defaultArchiveDir(config, ctx) })
+        const base = defaultArchiveDir(config, ctx)
+        sendJson(res, 200, {
+          booksDir: resolveBooksDir(config, ctx),
+          papersDir: activePapersDir !== '' ? activePapersDir : path.join(base, '.epub-reader', 'papers'),
+          dossiersDir: activeDossiersDir !== '' ? activeDossiersDir : path.join(base, '.epub-reader', 'dossiers'),
+          defaultDir: base,
+          defaultPapersDir: path.join(base, '.epub-reader', 'papers'),
+          defaultDossiersDir: path.join(base, '.epub-reader', 'dossiers'),
+        })
         return
       }
 
       if (method === 'POST' && pathname === '/settings') {
         const payload = await readJson(req)
-        const requested = typeof payload.booksDir === 'string' ? payload.booksDir.trim() : ''
-        let booksDir = ''
-        if (requested !== '') {
+        const fields = [
+          ['booksDir', '书籍目录', 'BOOKS_DIR_UNAVAILABLE'],
+          ['papersDir', '论文存放目录', 'PAPERS_DIR_UNAVAILABLE'],
+          ['dossiersDir', '卷宗存放目录', 'DOSSIERS_DIR_UNAVAILABLE'],
+        ]
+        const next = {}
+        for (const [field, label, code] of fields) {
+          if (typeof payload[field] !== 'string') continue
+          const requested = payload[field].trim()
+          if (requested === '') { next[field] = ''; continue }
           const target = path.resolve(requested)
           try {
             await fs.mkdir(target, { recursive: true })
-            booksDir = await fs.realpath(target)
+            next[field] = await fs.realpath(target)
           } catch (error) {
-            throw new HttpError(400, 'BOOKS_DIR_UNAVAILABLE', `无法使用书籍目录 ${target}：${publicErrorMessage(error)}`)
+            throw new HttpError(400, code, `无法使用${label} ${target}：${publicErrorMessage(error)}`)
           }
         }
         const current = readReaderSettingsSync(config, ctx)
-        await writeReaderSettings(config, ctx, { ...current, booksDir })
-        activeBooksDir = booksDir
+        await writeReaderSettings(config, ctx, { ...current, ...next })
+        if ('booksDir' in next) activeBooksDir = next.booksDir
+        if ('papersDir' in next) activePapersDir = next.papersDir
+        if ('dossiersDir' in next) activeDossiersDir = next.dossiersDir
         catalog = new Map()
-        sendJson(res, 200, { booksDir: resolveBooksDir(config, ctx), defaultDir: defaultArchiveDir(config, ctx) })
+        const base = defaultArchiveDir(config, ctx)
+        sendJson(res, 200, {
+          booksDir: resolveBooksDir(config, ctx),
+          papersDir: activePapersDir !== '' ? activePapersDir : path.join(base, '.epub-reader', 'papers'),
+          dossiersDir: activeDossiersDir !== '' ? activeDossiersDir : path.join(base, '.epub-reader', 'dossiers'),
+          defaultDir: base,
+          defaultPapersDir: path.join(base, '.epub-reader', 'papers'),
+          defaultDossiersDir: path.join(base, '.epub-reader', 'dossiers'),
+        })
         return
       }
 

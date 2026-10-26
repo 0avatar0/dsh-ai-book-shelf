@@ -220,6 +220,13 @@ window.__ModuleLoader__.load({
       'reader.fontLarger': '放大字号',
       'reader.zoomHint': 'Ctrl / ⌘ + 鼠标滚轮调整字号',
       'reader.zoomHintShort': '+ 滚轮',
+      'settings.title': '存储与目录',
+      'settings.booksDir': '书籍目录',
+      'settings.papersDir': '论文存放目录',
+      'settings.dossiersDir': '卷宗存放目录',
+      'settings.hint': '留空使用默认路径。修改后返回对应模式重新加载；现有文件不会自动移动。',
+      'settings.save': '保存',
+      'settings.cancel': '取消',
       'reader.settings': '阅读设置',
       'reader.booksDir': '书籍目录',
       'reader.booksDirHint': '修改后书架会扫描并优先保存到这个目录；留空使用默认目录：{path}',
@@ -476,6 +483,13 @@ window.__ModuleLoader__.load({
       'reader.fontLarger': 'Larger text',
       'reader.zoomHint': 'Ctrl / ⌘ + mouse wheel to resize text',
       'reader.zoomHintShort': '+ wheel',
+      'settings.title': 'Storage folders',
+      'settings.booksDir': 'Books folder',
+      'settings.papersDir': 'Papers folder',
+      'settings.dossiersDir': 'Dossiers folder',
+      'settings.hint': 'Leave empty for the default path. Reload the matching mode after saving; existing files are not moved.',
+      'settings.save': 'Save',
+      'settings.cancel': 'Cancel',
       'reader.settings': 'Reader settings',
       'reader.booksDir': 'Books folder',
       'reader.booksDirHint': 'The shelf scans and saves books here. Leave empty for the default: {path}',
@@ -782,6 +796,7 @@ window.__ModuleLoader__.load({
 .epub-reader-settings { width: min(560px, 100%); padding: 16px; border: 1px solid var(--epub-line-strong); border-radius: 13px; background: var(--epub-surface); box-shadow: 0 22px 60px -18px rgba(0,0,0,.6); }
 .epub-reader-settings header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
 .epub-reader-settings h3 { margin: 2px 0 0; font-size: 15px; }
+.epub-reader-settings-row { margin-bottom: 9px; }
 .epub-reader-settings-label { display: block; margin-bottom: 5px; color: var(--epub-muted); font-size: 9px; text-transform: uppercase; letter-spacing: .06em; }
 .epub-reader-settings-input { width: 100%; height: 34px; padding: 0 9px; border: 1px solid var(--epub-line); border-radius: 7px; outline: 0; background: var(--dsw-alias-bg-base); color: var(--epub-text); font-size: 11px; }
 .epub-reader-settings-input:focus { border-color: color-mix(in srgb, var(--epub-accent) 45%, var(--epub-line)); }
@@ -1936,6 +1951,11 @@ window.__ModuleLoader__.load({
       const [dragOver, setDragOver] = React.useState(false)
       const [showHidden, setShowHidden] = React.useState(false)
       const [bookMenu, setBookMenu] = React.useState(null)
+      const [settingsOpen, setSettingsOpen] = React.useState(false)
+      const [settings, setSettings] = React.useState({ booksDir: '', papersDir: '', dossiersDir: '' })
+      const [settingsDefaults, setSettingsDefaults] = React.useState({ booksDir: '', papersDir: '', dossiersDir: '' })
+      const [settingsSaving, setSettingsSaving] = React.useState(false)
+      const [settingsError, setSettingsError] = React.useState('')
       const fileRef = React.useRef(null)
 
       React.useEffect(() => {
@@ -2039,6 +2059,45 @@ window.__ModuleLoader__.load({
 
       async function importFile(file) {
         await importFiles([file])
+      }
+
+      async function openSettings() {
+        setSettingsOpen(true)
+        setSettingsError('')
+        try {
+          const data = await apiGet('/settings')
+          setSettings({
+            booksDir: data.booksDir ?? '',
+            papersDir: data.papersDir ?? '',
+            dossiersDir: data.dossiersDir ?? '',
+          })
+          setSettingsDefaults({
+            booksDir: data.defaultDir ?? '',
+            papersDir: data.defaultPapersDir ?? '',
+            dossiersDir: data.defaultDossiersDir ?? '',
+          })
+        } catch (reason) {
+          setSettingsError(reason instanceof Error ? reason.message : String(reason))
+        }
+      }
+
+      async function saveSettings() {
+        setSettingsSaving(true)
+        setSettingsError('')
+        try {
+          const data = await apiPost('/settings', settings)
+          setSettings({
+            booksDir: data.booksDir ?? '',
+            papersDir: data.papersDir ?? '',
+            dossiersDir: data.dossiersDir ?? '',
+          })
+          setSettingsOpen(false)
+          await load()
+        } catch (reason) {
+          setSettingsError(reason instanceof Error ? reason.message : String(reason))
+        } finally {
+          setSettingsSaving(false)
+        }
       }
 
       function saveSourcePrefs(next) {
@@ -2239,6 +2298,7 @@ window.__ModuleLoader__.load({
                 style: { display: 'none' },
                 onChange: (event) => { void importFiles(event.target.files); event.target.value = '' },
               }),
+              h('button', { type: 'button', className: 'epub-icon-btn', onClick: () => void openSettings(), title: t('settings.title'), 'aria-label': t('settings.title') }, h(IconSettings, { size: 16 })),
             ),
           ),
           h(
@@ -2499,7 +2559,35 @@ window.__ModuleLoader__.load({
                           })),
                         ),
               ),
-          bookMenu !== null
+          settingsOpen
+          ? h('div', { className: 'epub-dialog-backdrop', onMouseDown: (event) => { if (event.target === event.currentTarget) setSettingsOpen(false) } },
+              h('section', { className: 'epub-reader-settings' },
+                h('header', null,
+                  h('div', null, h('p', { className: 'epub-eyebrow' }, 'STORAGE'), h('h3', null, t('settings.title'))),
+                  h('button', { type: 'button', className: 'epub-icon-btn', onClick: () => setSettingsOpen(false), title: t('reader.close') }, h(IconX, { size: 16 })),
+                ),
+                h('div', { className: 'epub-reader-settings-row' },
+                  h('label', { className: 'epub-reader-settings-label' }, t('settings.booksDir')),
+                  h('input', { className: 'epub-reader-settings-input', value: settings.booksDir, placeholder: settingsDefaults.booksDir, onChange: (event) => setSettings({ ...settings, booksDir: event.target.value }) }),
+                ),
+                h('div', { className: 'epub-reader-settings-row' },
+                  h('label', { className: 'epub-reader-settings-label' }, t('settings.papersDir')),
+                  h('input', { className: 'epub-reader-settings-input', value: settings.papersDir, placeholder: settingsDefaults.papersDir, onChange: (event) => setSettings({ ...settings, papersDir: event.target.value }) }),
+                ),
+                h('div', { className: 'epub-reader-settings-row' },
+                  h('label', { className: 'epub-reader-settings-label' }, t('settings.dossiersDir')),
+                  h('input', { className: 'epub-reader-settings-input', value: settings.dossiersDir, placeholder: settingsDefaults.dossiersDir, onChange: (event) => setSettings({ ...settings, dossiersDir: event.target.value }) }),
+                ),
+                h('p', { className: 'epub-reader-settings-hint' }, t('settings.hint')),
+                settingsError !== '' ? h('p', { className: 'epub-reader-settings-error' }, settingsError) : null,
+                h('div', { className: 'epub-dialog-actions' },
+                  h('button', { type: 'button', className: 'epub-btn', onClick: () => setSettingsOpen(false) }, t('settings.cancel')),
+                  h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => void saveSettings(), disabled: settingsSaving }, settingsSaving ? '…' : t('settings.save')),
+                ),
+              ),
+            )
+          : null,
+        bookMenu !== null
             ? h('div', { className: 'epub-context-menu', style: { left: `${bookMenu.x}px`, top: `${bookMenu.y}px` }, onClick: (event) => event.stopPropagation() },
                 h('button', { type: 'button', className: 'epub-context-item', onClick: () => { const selected = bookMenu.book; setBookMenu(null); void toggleHidden(selected) } }, bookMenu.book.hidden === true ? t('library.unhide') : t('library.hide')),
                 h('button', {
@@ -4131,11 +4219,6 @@ window.__ModuleLoader__.load({
       const [annotationStatus, setAnnotationStatus] = React.useState('loading')
       const [annotationError, setAnnotationError] = React.useState('')
       const [ai, setAi] = React.useState({ open: true, view: 'history', status: 'idle', selection: null, turns: [], annotationId: null, error: '', lastQuestion: '' })
-      const [settingsOpen, setSettingsOpen] = React.useState(false)
-      const [booksDir, setBooksDir] = React.useState('')
-      const [defaultBooksDir, setDefaultBooksDir] = React.useState('')
-      const [settingsSaving, setSettingsSaving] = React.useState(false)
-      const [settingsError, setSettingsError] = React.useState('')
       const [findOpen, setFindOpen] = React.useState(false)
       const [findQuery, setFindQuery] = React.useState('')
       const [findStatus, setFindStatus] = React.useState('idle')
@@ -4801,33 +4884,6 @@ window.__ModuleLoader__.load({
         })
       }
 
-      async function openReaderSettings() {
-        setSettingsOpen(true)
-        setSettingsError('')
-        try {
-          const data = await apiGet('/settings')
-          setBooksDir(typeof data.booksDir === 'string' ? data.booksDir : '')
-          setDefaultBooksDir(typeof data.defaultDir === 'string' ? data.defaultDir : '')
-        } catch (reason) {
-          setSettingsError(reason instanceof Error ? reason.message : String(reason))
-        }
-      }
-
-      async function saveReaderSettings() {
-        setSettingsSaving(true)
-        setSettingsError('')
-        try {
-          const data = await apiPost('/settings', { booksDir: booksDir.trim() })
-          setBooksDir(typeof data.booksDir === 'string' ? data.booksDir : '')
-          setSettingsOpen(false)
-          if (onToast !== undefined) onToast(t('reader.settingsSaved'))
-        } catch (reason) {
-          setSettingsError(reason instanceof Error ? reason.message : String(reason))
-        } finally {
-          setSettingsSaving(false)
-        }
-      }
-
       React.useEffect(() => {
         function onWheel(event) {
           if (!event.ctrlKey && !event.metaKey) return
@@ -4886,7 +4942,6 @@ window.__ModuleLoader__.load({
             h('span', { className: 'epub-zoom-hint', title: t('reader.zoomHint') }, h('kbd', { className: 'epub-kbd' }, 'Ctrl'), t('reader.zoomHintShort')),
             h('button', { type: 'button', className: cn('epub-ghost-btn', tocOpen && 'is-active'), onClick: () => setTocOpen((value) => !value), title: t('reader.toc'), 'aria-label': t('reader.toc') }, h(IconList, { size: 15 }), h('span', null, t('reader.toc'))),
             h('button', { type: 'button', className: 'epub-ai-trigger', onClick: () => setAi((current) => ({ ...current, open: !current.open })), title: t('reader.ai'), 'aria-label': t('reader.ai') }, h(IconSparkles, { size: 15 }), h('span', null, t('reader.ai'))),
-            h('button', { type: 'button', className: 'epub-ghost-btn', onClick: () => void openReaderSettings(), title: t('reader.settings'), 'aria-label': t('reader.settings') }, h(IconSettings, { size: 15 })),
           ),
         ),
         findOpen
@@ -5066,29 +5121,6 @@ window.__ModuleLoader__.load({
                     className: 'epub-select-quick-btn',
                     onClick: () => void askAi(selection, t(`reader.ask.${key}`)),
                   }, t(`reader.chip.${key}`)),
-                ),
-              ),
-            )
-          : null,
-        settingsOpen
-          ? h('div', { className: 'epub-dialog-backdrop', onMouseDown: (event) => { if (event.target === event.currentTarget) setSettingsOpen(false) } },
-              h('section', { className: 'epub-reader-settings' },
-                h('header', null,
-                  h('div', null, h('p', { className: 'epub-eyebrow' }, 'READER SETTINGS'), h('h3', null, t('reader.settings'))),
-                  h('button', { type: 'button', className: 'epub-icon-btn', onClick: () => setSettingsOpen(false), title: t('reader.close') }, h(IconX, { size: 16 })),
-                ),
-                h('label', { className: 'epub-reader-settings-label' }, t('reader.booksDir')),
-                h('input', {
-                  className: 'epub-reader-settings-input',
-                  value: booksDir,
-                  onChange: (event) => setBooksDir(event.target.value),
-                  placeholder: defaultBooksDir,
-                }),
-                h('p', { className: 'epub-reader-settings-hint' }, format(t('reader.booksDirHint'), { path: defaultBooksDir })),
-                settingsError !== '' ? h('p', { className: 'epub-reader-settings-error' }, settingsError) : null,
-                h('div', { className: 'epub-dialog-actions' },
-                  h('button', { type: 'button', className: 'epub-btn', onClick: () => setSettingsOpen(false) }, t('reader.cancel')),
-                  h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => void saveReaderSettings(), disabled: settingsSaving }, settingsSaving ? '…' : t('reader.save')),
                 ),
               ),
             )

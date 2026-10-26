@@ -3,12 +3,12 @@
 ## 当前发布状态
 
 - GitHub 仓库：<https://github.com/0avatar0/dsh-ai-book-shelf>
-- 首个 Release：<https://github.com/0avatar0/dsh-ai-book-shelf/releases/tag/v2.6.12>
+- 首个 Release：<https://github.com/0avatar0/dsh-ai-book-shelf/releases/tag/v2.6.13>
 - 发布包：
-  - `dsh-ai-book-shelf-2.6.12.tgz`：DSH 插件安装包
-  - `dsh-ai-book-shelf-2.6.12.zip`：包含 tgz、中文安装说明和 SHA-256
-- 当前插件版本：`2.6.12`
-- npm 公共包：<https://www.npmjs.com/package/dsh-ai-book-shelf>（`latest` = 2.6.12）
+  - `dsh-ai-book-shelf-2.6.13.tgz`：DSH 插件安装包
+  - `dsh-ai-book-shelf-2.6.13.zip`：包含 tgz、中文安装说明和 SHA-256
+- 当前插件版本：`2.6.13`
+- npm 公共包：<https://www.npmjs.com/package/dsh-ai-book-shelf>（`latest` = 2.6.13）
 
 ## 一、发布到 GitHub（已经完成，后续更新用）
 
@@ -81,13 +81,13 @@ npm view dsh-ai-book-shelf version
 发布后，其他电脑可在 DSH 的 **Plugins → Add plugin** 中填：
 
 ```text
-dsh-ai-book-shelf@2.6.12
+dsh-ai-book-shelf@2.6.13
 ```
 
 或继续使用 tgz：
 
 ```text
-D:\path\to\dsh-ai-book-shelf-2.6.12.tgz
+D:\path\to\dsh-ai-book-shelf-2.6.13.tgz
 ```
 
 ## 三、注册清单
