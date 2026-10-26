@@ -2502,6 +2502,19 @@ function createHandler(ctx, config) {
         return
       }
 
+      if (method === 'POST' && pathname === '/settings/pick') {
+        const picker = ctx.get('directoryPickerController')
+        if (picker === undefined || typeof picker.pick !== 'function') {
+          throw new HttpError(503, 'PICKER_UNAVAILABLE', '当前环境没有可用的目录选择器，请直接输入路径')
+        }
+        await readJson(req)
+        const controller = new AbortController()
+        res.on('close', () => { if (!res.writableEnded) controller.abort() })
+        const selected = await picker.pick(controller.signal)
+        sendJson(res, 200, { path: typeof selected === 'string' ? selected : '' })
+        return
+      }
+
       if (method === 'POST' && pathname === '/settings') {
         const payload = await readJson(req)
         const fields = [

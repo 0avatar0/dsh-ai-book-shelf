@@ -225,6 +225,7 @@ window.__ModuleLoader__.load({
       'settings.papersDir': '论文存放目录',
       'settings.dossiersDir': '卷宗存放目录',
       'settings.hint': '留空使用默认路径。修改后返回对应模式重新加载；现有文件不会自动移动。',
+      'settings.choose': '选择路径',
       'settings.save': '保存',
       'settings.cancel': '取消',
       'reader.settings': '阅读设置',
@@ -488,6 +489,7 @@ window.__ModuleLoader__.load({
       'settings.papersDir': 'Papers folder',
       'settings.dossiersDir': 'Dossiers folder',
       'settings.hint': 'Leave empty for the default path. Reload the matching mode after saving; existing files are not moved.',
+      'settings.choose': 'Choose',
       'settings.save': 'Save',
       'settings.cancel': 'Cancel',
       'reader.settings': 'Reader settings',
@@ -610,6 +612,8 @@ window.__ModuleLoader__.load({
 .epub-library-inner { width: min(100%, 1200px); margin: 0 auto; }
 .epub-library-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
 .epub-brand { display: flex; align-items: center; gap: 15px; min-width: 0; }
+.epub-brand-settings { display: grid; place-items: center; width: 30px; height: 30px; flex: none; margin-left: 8px; border: 1px solid var(--epub-line); border-radius: 8px; background: var(--epub-surface); color: var(--epub-muted); }
+.epub-brand-settings:hover { color: var(--epub-text); border-color: var(--epub-line-strong); background: var(--epub-surface-2); }
 .epub-brand-mark {
   width: 52px; height: 52px; flex: none; border-radius: 16px;
   display: grid; place-items: center;
@@ -798,6 +802,8 @@ window.__ModuleLoader__.load({
 .epub-reader-settings h3 { margin: 2px 0 0; font-size: 15px; }
 .epub-reader-settings-row { margin-bottom: 9px; }
 .epub-reader-settings-label { display: block; margin-bottom: 5px; color: var(--epub-muted); font-size: 9px; text-transform: uppercase; letter-spacing: .06em; }
+.epub-reader-settings-path { display: flex; align-items: center; gap: 6px; }
+.epub-reader-settings-path .epub-reader-settings-input { flex: 1; min-width: 0; }
 .epub-reader-settings-input { width: 100%; height: 34px; padding: 0 9px; border: 1px solid var(--epub-line); border-radius: 7px; outline: 0; background: var(--dsw-alias-bg-base); color: var(--epub-text); font-size: 11px; }
 .epub-reader-settings-input:focus { border-color: color-mix(in srgb, var(--epub-accent) 45%, var(--epub-line)); }
 .epub-reader-settings-hint { margin: 7px 0 0; color: var(--epub-muted); font-size: 9px; line-height: 1.55; overflow-wrap: anywhere; }
@@ -1955,6 +1961,7 @@ window.__ModuleLoader__.load({
       const [settings, setSettings] = React.useState({ booksDir: '', papersDir: '', dossiersDir: '' })
       const [settingsDefaults, setSettingsDefaults] = React.useState({ booksDir: '', papersDir: '', dossiersDir: '' })
       const [settingsSaving, setSettingsSaving] = React.useState(false)
+      const [settingsPicking, setSettingsPicking] = React.useState('')
       const [settingsError, setSettingsError] = React.useState('')
       const fileRef = React.useRef(null)
 
@@ -2078,6 +2085,21 @@ window.__ModuleLoader__.load({
           })
         } catch (reason) {
           setSettingsError(reason instanceof Error ? reason.message : String(reason))
+        }
+      }
+
+      async function chooseSettingsPath(field) {
+        setSettingsPicking(field)
+        setSettingsError('')
+        try {
+          const data = await apiPost('/settings/pick', {})
+          if (typeof data.path === 'string' && data.path !== '') {
+            setSettings((current) => ({ ...current, [field]: data.path }))
+          }
+        } catch (reason) {
+          setSettingsError(reason instanceof Error ? reason.message : String(reason))
+        } finally {
+          setSettingsPicking('')
         }
       }
 
@@ -2267,6 +2289,7 @@ window.__ModuleLoader__.load({
                 h('p', { className: 'epub-subtitle' }, t('library.subtitle')),
                 h('p', { className: 'epub-formats' }, t('library.supportedFormats')),
               ),
+              h('button', { type: 'button', className: 'epub-brand-settings', onClick: () => void openSettings(), title: t('settings.title'), 'aria-label': t('settings.title') }, h(IconSettings, { size: 16 })),
             ),
             h(
               'div',
@@ -2298,7 +2321,6 @@ window.__ModuleLoader__.load({
                 style: { display: 'none' },
                 onChange: (event) => { void importFiles(event.target.files); event.target.value = '' },
               }),
-              h('button', { type: 'button', className: 'epub-icon-btn', onClick: () => void openSettings(), title: t('settings.title'), 'aria-label': t('settings.title') }, h(IconSettings, { size: 16 })),
             ),
           ),
           h(
@@ -2566,17 +2588,14 @@ window.__ModuleLoader__.load({
                   h('div', null, h('p', { className: 'epub-eyebrow' }, 'STORAGE'), h('h3', null, t('settings.title'))),
                   h('button', { type: 'button', className: 'epub-icon-btn', onClick: () => setSettingsOpen(false), title: t('reader.close') }, h(IconX, { size: 16 })),
                 ),
-                h('div', { className: 'epub-reader-settings-row' },
-                  h('label', { className: 'epub-reader-settings-label' }, t('settings.booksDir')),
-                  h('input', { className: 'epub-reader-settings-input', value: settings.booksDir, placeholder: settingsDefaults.booksDir, onChange: (event) => setSettings({ ...settings, booksDir: event.target.value }) }),
-                ),
-                h('div', { className: 'epub-reader-settings-row' },
-                  h('label', { className: 'epub-reader-settings-label' }, t('settings.papersDir')),
-                  h('input', { className: 'epub-reader-settings-input', value: settings.papersDir, placeholder: settingsDefaults.papersDir, onChange: (event) => setSettings({ ...settings, papersDir: event.target.value }) }),
-                ),
-                h('div', { className: 'epub-reader-settings-row' },
-                  h('label', { className: 'epub-reader-settings-label' }, t('settings.dossiersDir')),
-                  h('input', { className: 'epub-reader-settings-input', value: settings.dossiersDir, placeholder: settingsDefaults.dossiersDir, onChange: (event) => setSettings({ ...settings, dossiersDir: event.target.value }) }),
+                [['booksDir', t('settings.booksDir'), settingsDefaults.booksDir], ['papersDir', t('settings.papersDir'), settingsDefaults.papersDir], ['dossiersDir', t('settings.dossiersDir'), settingsDefaults.dossiersDir]].map(([field, label, placeholder]) =>
+                  h('div', { className: 'epub-reader-settings-row', key: field },
+                    h('label', { className: 'epub-reader-settings-label' }, label),
+                    h('div', { className: 'epub-reader-settings-path' },
+                      h('input', { className: 'epub-reader-settings-input', value: settings[field], placeholder, onChange: (event) => setSettings({ ...settings, [field]: event.target.value }) }),
+                      h('button', { type: 'button', className: 'epub-btn', disabled: settingsPicking !== '', onClick: () => void chooseSettingsPath(field) }, settingsPicking === field ? '…' : t('settings.choose')),
+                    ),
+                  ),
                 ),
                 h('p', { className: 'epub-reader-settings-hint' }, t('settings.hint')),
                 settingsError !== '' ? h('p', { className: 'epub-reader-settings-error' }, settingsError) : null,
