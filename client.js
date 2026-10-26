@@ -612,7 +612,7 @@ window.__ModuleLoader__.load({
 .epub-library-inner { width: min(100%, 1200px); margin: 0 auto; }
 .epub-library-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
 .epub-brand { display: flex; align-items: center; gap: 15px; min-width: 0; }
-.epub-brand-settings { display: grid; place-items: center; width: 30px; height: 30px; flex: none; margin-left: 8px; border: 1px solid var(--epub-line); border-radius: 8px; background: var(--epub-surface); color: var(--epub-muted); }
+.epub-brand-settings { display: grid; place-items: center; width: 34px; height: 34px; flex: none; margin-left: 8px; border: 1px solid var(--epub-line); border-radius: 8px; background: var(--epub-surface); color: var(--epub-muted); }
 .epub-brand-settings:hover { color: var(--epub-text); border-color: var(--epub-line-strong); background: var(--epub-surface-2); }
 .epub-brand-mark {
   width: 52px; height: 52px; flex: none; border-radius: 16px;
@@ -2289,7 +2289,7 @@ window.__ModuleLoader__.load({
                 h('p', { className: 'epub-subtitle' }, t('library.subtitle')),
                 h('p', { className: 'epub-formats' }, t('library.supportedFormats')),
               ),
-              h('button', { type: 'button', className: 'epub-brand-settings', onClick: () => void openSettings(), title: t('settings.title'), 'aria-label': t('settings.title') }, h(IconSettings, { size: 16 })),
+              h('button', { type: 'button', className: 'epub-brand-settings', onClick: () => void openSettings(), title: t('settings.title'), 'aria-label': t('settings.title') }, h(IconSettings, { size: 20 })),
             ),
             h(
               'div',
