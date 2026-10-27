@@ -124,6 +124,16 @@ window.__ModuleLoader__.load({
       'dossiers.title': '卷宗库',
       'dossiers.subtitle': '按文件夹整理卷宗，支持全选导入、全文搜索、AI 总结和文件夹 Skill。',
       'dossiers.import': '导入卷宗',
+      'dossiers.importJudgments': '导入裁判文书',
+      'dossiers.filters': '多条件',
+      'dossiers.filterCourt': '法院',
+      'dossiers.filterCaseNo': '案号',
+      'dossiers.filterParty': '当事人',
+      'dossiers.filterCause': '案由',
+      'dossiers.filterFrom': '起始日期',
+      'dossiers.filterTo': '截止日期',
+      'dossiers.applyFilters': '应用筛选',
+      'dossiers.clearFilters': '清除条件',
       'dossiers.importing': '正在导入卷宗…',
       'dossiers.importFailed': '卷宗导入失败',
       'dossiers.newFolder': '新建卷宗文件夹',
@@ -400,6 +410,16 @@ window.__ModuleLoader__.load({
       'dossiers.title': 'Dossier library',
       'dossiers.subtitle': 'Organize dossiers by folder, with multi-select import, full-text search, AI summaries and folder skills.',
       'dossiers.import': 'Import dossiers',
+      'dossiers.importJudgments': 'Import judgments',
+      'dossiers.filters': 'Filters',
+      'dossiers.filterCourt': 'Court',
+      'dossiers.filterCaseNo': 'Case no.',
+      'dossiers.filterParty': 'Party',
+      'dossiers.filterCause': 'Cause',
+      'dossiers.filterFrom': 'From date',
+      'dossiers.filterTo': 'To date',
+      'dossiers.applyFilters': 'Apply filters',
+      'dossiers.clearFilters': 'Clear filters',
       'dossiers.importing': 'Importing dossiers…',
       'dossiers.importFailed': 'Dossier import failed',
       'dossiers.newFolder': 'New dossier folder',
@@ -1076,6 +1096,12 @@ window.__ModuleLoader__.load({
 .epub-dossier-summary-btn { height: 30px; padding: 0 8px; font-size: 10px; }
 .epub-dossier-search { display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 8px; border: 1px solid var(--epub-line); border-radius: 7px; background: var(--dsw-alias-bg-base); color: var(--epub-muted); }
 .epub-dossier-search input { width: 190px; border: 0; outline: 0; background: transparent; color: var(--epub-text); font-size: 10px; }
+.epub-dossier-filters { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin: 0 0 10px; padding: 9px; border: 1px solid var(--epub-line); border-radius: 9px; background: var(--epub-surface); }
+.epub-dossier-filter-field { display: flex; flex-direction: column; gap: 3px; min-width: 0; color: var(--epub-muted); font-size: 8.5px; }
+.epub-dossier-filter-field input { width: 100%; height: 28px; padding: 0 7px; border: 1px solid var(--epub-line); border-radius: 6px; outline: 0; background: var(--dsw-alias-bg-base); color: var(--epub-text); font-size: 9.5px; }
+.epub-dossier-filter-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 6px; }
+.epub-dossier-meta-tags { display: flex; flex-wrap: wrap; gap: 3px; margin: 0 0 6px; }
+.epub-dossier-meta-tags span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 1px 4px; border-radius: 3px; background: var(--epub-surface-2); color: var(--epub-muted); font-size: 8px; }
 .epub-dossier-hint { margin: 0 0 10px; color: var(--epub-muted); font-size: 9px; line-height: 1.5; }
 .epub-dossier-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 9px; }
 .epub-dossier-card { padding: 12px; border: 1px solid var(--epub-line); border-radius: 10px; background: var(--epub-surface); cursor: pointer; min-width: 0; }
@@ -1180,6 +1206,7 @@ window.__ModuleLoader__.load({
   .epub-dossier-search { flex: 1; }
   .epub-dossier-search input { width: 100%; min-width: 0; }
   .epub-dossier-grid { grid-template-columns: 1fr; }
+  .epub-dossier-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .epub-dossier-summary { max-height: 88vh; }
   .epub-zoom-hint { display: none; }
   .epub-paper-folders { display: flex; gap: 4px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--epub-line); }
@@ -3228,7 +3255,9 @@ window.__ModuleLoader__.load({
       const [state, setState] = React.useState({ status: 'loading', folders: [], items: [], error: '' })
       const [activeFolder, setActiveFolder] = React.useState('all')
       const [query, setQuery] = React.useState('')
-      const [search, setSearch] = React.useState({ busy: false, results: [], error: '', query: '' })
+      const [search, setSearch] = React.useState({ busy: false, results: [], error: '', query: '', active: false })
+      const [advancedOpen, setAdvancedOpen] = React.useState(false)
+      const [filters, setFilters] = React.useState({ court: '', caseNo: '', party: '', cause: '', dateFrom: '', dateTo: '' })
       const [importing, setImporting] = React.useState(false)
       const [error, setError] = React.useState('')
       const [dialog, setDialog] = React.useState(null)
@@ -3239,6 +3268,7 @@ window.__ModuleLoader__.load({
       const [skillEditor, setSkillEditor] = React.useState(null)
       const [summary, setSummary] = React.useState({ open: false, status: 'idle', busy: false, text: '', title: '', error: '', statusText: '', turns: [], question: '', selection: '', askStatus: 'idle', lastOptions: null })
       const fileRef = React.useRef(null)
+      const judgmentRef = React.useRef(null)
       const summaryAbort = React.useRef(null)
       const summaryInputRef = React.useRef(null)
       const searchAbort = React.useRef(null)
@@ -3281,7 +3311,7 @@ window.__ModuleLoader__.load({
       const folder = state.folders.find((entry) => entry.id === activeFolder)
       const folderLabel = activeFolder === 'all' ? t('dossiers.all') : activeFolder === 'root' ? t('dossiers.root') : folder?.name ?? t('dossiers.title')
       const documents = state.items.filter((item) => item.kind === 'document' && (activeFolder === 'all' || item.folderId === folderId))
-      const shown = search.query !== '' ? search.results : documents
+      const shown = search.active ? search.results : documents
       const summaryLocked = summary.busy || summary.status === 'streaming' || summary.askStatus === 'streaming'
 
       function skillsFor(id) {
@@ -3388,13 +3418,17 @@ window.__ModuleLoader__.load({
       async function runSearch(event) {
         if (event !== undefined) event.preventDefault()
         const value = query.trim()
-        if (value === '') { stopSearch(); setSearch({ busy: false, results: [], error: '', query: '' }); return }
+        const activeFilters = Object.entries(filters).filter(([, entry]) => String(entry).trim() !== '')
+        if (value === '' && activeFilters.length === 0) { stopSearch(); setSearch({ busy: false, results: [], error: '', query: '', active: false }); return }
         searchAbort.current?.abort()
         const controller = new AbortController()
         searchAbort.current = controller
-        setSearch({ busy: true, results: [], error: '', query: value })
+        setSearch({ busy: true, results: [], error: '', query: value, active: true })
+        const params = new URLSearchParams({ folder: folderId })
+        if (value !== '') params.set('q', value)
+        for (const [key, entry] of activeFilters) params.set(key, String(entry).trim())
         try {
-          await apiStreamSearch(`/dossiers/search/stream?folder=${encodeURIComponent(folderId)}&q=${encodeURIComponent(value)}`, {
+          await apiStreamSearch(`/dossiers/search/stream?${params.toString()}`, {
             signal: controller.signal,
             onEvent: (streamEvent) => {
               if (streamEvent.type === 'match' && streamEvent.match !== undefined) {
@@ -3585,7 +3619,7 @@ window.__ModuleLoader__.load({
           await apiPost('/dossiers/clear', { folderId: clearConfirm.scope })
           setClearConfirm(null)
           stopSearch()
-          setSearch({ busy: false, results: [], error: '', query: '' })
+          setSearch({ busy: false, results: [], error: '', query: '', active: false })
           setQuery('')
           await load()
         } catch (reason) {
@@ -3594,7 +3628,7 @@ window.__ModuleLoader__.load({
       }
 
       function summaryScopeIds() {
-        if (search.query !== '' && search.results.length > 0) return search.results.map((entry) => entry.id)
+        if (search.active && search.results.length > 0) return search.results.map((entry) => entry.id)
         return []
       }
 
@@ -3609,21 +3643,23 @@ window.__ModuleLoader__.load({
             ),
           ),
           h('div', { className: 'epub-papers-head-actions' },
+            h('button', { type: 'button', className: 'epub-btn', onClick: () => { setImportFolderId(null); judgmentRef.current?.click() } }, h(IconUpload, { size: 14 }), t('dossiers.importJudgments')),
             h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => { setImportFolderId(null); fileRef.current?.click() } }, h(IconUpload, { size: 14 }), t('dossiers.import')),
             h('input', { ref: fileRef, type: 'file', accept: BOOK_ACCEPT, multiple: true, style: { display: 'none' }, onChange: (event) => { void importFiles(event.target.files); event.target.value = '' } }),
+            h('input', { ref: judgmentRef, type: 'file', accept: '.pdf,.docx,.txt,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document', multiple: true, style: { display: 'none' }, onChange: (event) => { void importFiles(event.target.files); event.target.value = '' } }),
           ),
         ),
         error !== '' ? h(ErrorBanner, { title: t('dossiers.importFailed'), message: error, actionLabel: t('papers.retry'), onAction: () => setError('') }) : null,
         h('div', { className: 'epub-papers-body' },
           h('aside', { className: 'epub-paper-folders' },
             h('div', { className: 'epub-paper-folder-top' },
-              h('button', { type: 'button', className: cn('epub-paper-folder', activeFolder === 'all' && 'is-active'), onClick: () => { setActiveFolder('all'); setSearch({ busy: false, results: [], error: '', query: '' }); setQuery('') } }, t('dossiers.all'), h('span', null, String(state.items.filter((item) => item.kind === 'document').length))),
+              h('button', { type: 'button', className: cn('epub-paper-folder', activeFolder === 'all' && 'is-active'), onClick: () => { setActiveFolder('all'); setSearch({ busy: false, results: [], error: '', query: '', active: false }); setQuery('') } }, t('dossiers.all'), h('span', null, String(state.items.filter((item) => item.kind === 'document').length))),
               h('button', { type: 'button', className: 'epub-paper-folder-add', onClick: () => openDialog('folder'), title: t('dossiers.newFolder'), 'aria-label': t('dossiers.newFolder') }, h(IconFolderPlus, { size: 15 })),
             ),
             h('div', { className: 'epub-dossier-folder-group', onContextMenu: (event) => openContext(event, 'root') },
               h('div', { className: cn('epub-paper-folder-wrap', activeFolder === 'root' && 'is-active') },
                 h('button', { type: 'button', className: 'epub-dossier-expand', onClick: () => toggleFolder('root'), title: expandedFolders.has('root') ? t('dossiers.collapse') : t('dossiers.expand'), 'aria-label': expandedFolders.has('root') ? t('dossiers.collapse') : t('dossiers.expand') }, expandedFolders.has('root') ? '▾' : '▸'),
-                h('button', { type: 'button', className: cn('epub-paper-folder', activeFolder === 'root' && 'is-active'), onClick: () => { setActiveFolder('root'); setSearch({ busy: false, results: [], error: '', query: '' }); setQuery('') } }, t('dossiers.root'), h('span', null, String(state.items.filter((item) => item.kind === 'document' && item.folderId === '').length))),
+                h('button', { type: 'button', className: cn('epub-paper-folder', activeFolder === 'root' && 'is-active'), onClick: () => { setActiveFolder('root'); setSearch({ busy: false, results: [], error: '', query: '', active: false }); setQuery('') } }, t('dossiers.root'), h('span', null, String(state.items.filter((item) => item.kind === 'document' && item.folderId === '').length))),
                 h('button', { type: 'button', className: 'epub-paper-folder-rename', onClick: () => void createSkill(''), title: t('dossiers.createSkill') }, '+'),
               ),
               expandedFolders.has('root') ? renderFolderSkills('') : null,
@@ -3632,7 +3668,7 @@ window.__ModuleLoader__.load({
               h('div', { key: entry.id, className: 'epub-dossier-folder-group', onContextMenu: (event) => openContext(event, 'folder', { folderId: entry.id }) },
                 h('div', { className: cn('epub-paper-folder-wrap', activeFolder === entry.id && 'is-active') },
                   h('button', { type: 'button', className: 'epub-dossier-expand', onClick: () => toggleFolder(entry.id), title: expandedFolders.has(entry.id) ? t('dossiers.collapse') : t('dossiers.expand'), 'aria-label': expandedFolders.has(entry.id) ? t('dossiers.collapse') : t('dossiers.expand') }, expandedFolders.has(entry.id) ? '▾' : '▸'),
-                  h('button', { type: 'button', className: cn('epub-paper-folder', activeFolder === entry.id && 'is-active'), onClick: () => { setActiveFolder(entry.id); setSearch({ busy: false, results: [], error: '', query: '' }); setQuery('') } }, entry.name, h('span', null, String(state.items.filter((item) => item.kind === 'document' && item.folderId === entry.id).length))),
+                  h('button', { type: 'button', className: cn('epub-paper-folder', activeFolder === entry.id && 'is-active'), onClick: () => { setActiveFolder(entry.id); setSearch({ busy: false, results: [], error: '', query: '', active: false }); setQuery('') } }, entry.name, h('span', null, String(state.items.filter((item) => item.kind === 'document' && item.folderId === entry.id).length))),
                   h('button', { type: 'button', className: 'epub-paper-folder-rename', onClick: () => openDialog('folderRename', entry.name, entry.id), title: t('dossiers.renameFolder') }, '✎'),
                   h('button', { type: 'button', className: 'epub-paper-folder-rename', onClick: () => void createSkill(entry.id), title: t('dossiers.createSkill') }, '+'),
                 ),
@@ -3648,14 +3684,29 @@ window.__ModuleLoader__.load({
                   h(IconSearch, { size: 14 }),
                   h('input', { value: query, onChange: (event) => setQuery(event.target.value), placeholder: t('dossiers.searchPlaceholder'), 'aria-label': t('dossiers.searchPlaceholder'), type: 'search' }),
                 ),
+                h('button', { type: 'button', className: cn('epub-btn', advancedOpen && 'epub-btn-primary'), onClick: () => setAdvancedOpen((value) => !value) }, t('dossiers.filters')),
                 search.busy
                   ? h('button', { type: 'button', className: 'epub-icon-btn epub-dossier-stop', onClick: stopSearch, title: t('dossiers.stopSearch'), 'aria-label': t('dossiers.stopSearch') }, h(IconStopCircle, { size: 16 }))
-                  : search.query !== ''
+                  : search.active
                     ? h('span', { className: 'epub-dossier-search-count' }, format(t('dossiers.searchCount'), { count: search.results.length }))
                     : null,
-                h('button', { type: 'button', className: 'epub-btn epub-btn-primary epub-dossier-summary-btn', onClick: () => void startSummary({ ids: summaryScopeIds(), query: search.query, title: search.query === '' ? t('dossiers.summaryTitle') : t('dossiers.summarySearchTitle') }), disabled: search.busy || (documents.length === 0 && search.results.length === 0) }, h(IconSparkles, { size: 12 }), t('dossiers.summary')),
+                h('button', { type: 'button', className: 'epub-btn epub-btn-primary epub-dossier-summary-btn', onClick: () => void startSummary({ ids: summaryScopeIds(), query: search.active ? search.query : '', title: search.active ? t('dossiers.summarySearchTitle') : t('dossiers.summaryTitle') }), disabled: search.busy || (documents.length === 0 && search.results.length === 0) }, h(IconSparkles, { size: 12 }), t('dossiers.summary')),
               ),
             ),
+            advancedOpen
+              ? h('div', { className: 'epub-dossier-filters' },
+                  [['court', t('dossiers.filterCourt'), 'text'], ['caseNo', t('dossiers.filterCaseNo'), 'text'], ['party', t('dossiers.filterParty'), 'text'], ['cause', t('dossiers.filterCause'), 'text'], ['dateFrom', t('dossiers.filterFrom'), 'date'], ['dateTo', t('dossiers.filterTo'), 'date']].map(([key, label, type]) =>
+                    h('label', { key, className: 'epub-dossier-filter-field' },
+                      h('span', null, label),
+                      h('input', { type, value: filters[key], onChange: (event) => setFilters({ ...filters, [key]: event.target.value }) }),
+                    ),
+                  ),
+                  h('div', { className: 'epub-dossier-filter-actions' },
+                    h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => void runSearch() }, t('dossiers.applyFilters')),
+                    h('button', { type: 'button', className: 'epub-btn', onClick: () => { setFilters({ court: '', caseNo: '', party: '', cause: '', dateFrom: '', dateTo: '' }); if (query.trim() === '') { stopSearch(); setSearch({ busy: false, results: [], error: '', query: '', active: false }) } else { void runSearch() } } }, t('dossiers.clearFilters')),
+                  ),
+                )
+              : null,
             h('div', { className: 'epub-dossier-hint' }, t('dossiers.skillHint')),
             search.error !== '' ? h('div', { className: 'epub-dossier-empty' }, search.error) : null,
             importing
@@ -3668,7 +3719,7 @@ window.__ModuleLoader__.load({
                 : search.busy && shown.length === 0
                   ? h('div', { className: 'epub-paper-empty' }, h(Spinner, null))
                   : shown.length === 0 && !importing
-                  ? h('div', { className: 'epub-paper-empty' }, h(IconFolderPlus, { size: 30 }), h('h3', null, search.query !== '' ? t('dossiers.searchEmpty') : t('dossiers.empty')), h('p', null, search.query !== '' ? t('dossiers.searchEmptyHint') : t('dossiers.emptyHint')))
+                  ? h('div', { className: 'epub-paper-empty' }, h(IconFolderPlus, { size: 30 }), h('h3', null, search.active ? t('dossiers.searchEmpty') : t('dossiers.empty')), h('p', null, search.active ? t('dossiers.searchEmptyHint') : t('dossiers.emptyHint')))
                   : shown.length > 0
                     ? h('div', { className: 'epub-dossier-grid' },
                         shown.map((item) => h('article', {
@@ -3679,7 +3730,15 @@ window.__ModuleLoader__.load({
                         },
                           h('div', { className: 'epub-dossier-type' }, (item.format || 'DOC').toUpperCase()),
                           h('h3', null, item.title),
-                          h('p', null, search.query !== '' && item.snippet !== undefined ? item.snippet : (item.preview || t('dossiers.openHint'))),
+                          item.meta !== undefined && item.meta !== null
+                            ? h('div', { className: 'epub-dossier-meta-tags' },
+                                item.meta.court !== '' ? h('span', null, item.meta.court) : null,
+                                item.meta.caseNumbers !== undefined && item.meta.caseNumbers.length > 0 ? h('span', null, item.meta.caseNumbers[0]) : null,
+                                item.meta.cause !== '' ? h('span', null, item.meta.cause) : null,
+                                item.meta.dates !== undefined && item.meta.dates.length > 0 ? h('span', null, item.meta.dates[0]) : null,
+                              )
+                            : null,
+                          h('p', null, search.active && item.snippet !== undefined ? item.snippet : (item.preview || t('dossiers.openHint'))),
                           h('div', { className: 'epub-dossier-meta' }, h('span', null, formatBytes(item.size ?? 0)), h('span', null, t('dossiers.open'))),
                         )),
                       )
