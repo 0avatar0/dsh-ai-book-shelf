@@ -1448,7 +1448,7 @@ async function openModelStream(ctx, route, payload, signal) {
     provider: route.provider,
     model: route.model,
     temperature: 0.25,
-    maxTokens: 700,
+    maxTokens: 1400,
   }
   if (typeof llm.prepareCall === 'function') {
     const prepared = await llm.prepareCall(call, signal)
@@ -1784,7 +1784,7 @@ function createHandler(ctx, config) {
       system: '你是专业的学术论文翻译。把英文论文准确翻译成简体中文，保留术语、引用编号、公式符号和段落结构。只输出中文译文，不要解释、不要加标题、不要重复原文。',
       messages: [{ role: 'user', content: [{ type: 'text', text: `论文标题：${title}\n\n请翻译：\n${text.slice(0, 8000)}` }] }],
     }
-    const call = { provider: route.provider, model: route.model, temperature: 0.2, maxTokens: 1800 }
+    const call = { provider: route.provider, model: route.model, temperature: 0.2, maxTokens: 3000 }
     let stream
     if (typeof llm.prepareCall === 'function') {
       const prepared = await llm.prepareCall(call)
@@ -2258,7 +2258,7 @@ function createHandler(ctx, config) {
       ].filter(Boolean).join('\n')
       await status('正在生成总结…')
       const request = { system, messages: [{ role: 'user', content: [{ type: 'text', text: prompt.slice(0, 60000) }] }], signal: controller.signal }
-      const call = { provider: route.provider, model: route.model, temperature: 0.2, maxTokens: 1800 }
+      const call = { provider: route.provider, model: route.model, temperature: 0.2, maxTokens: 3000 }
       const stream = typeof llm.prepareCall === 'function'
         ? await (async () => { const prepared = await llm.prepareCall(call, controller.signal); return prepared.stream({ ...prepared.config, ...request }) })()
         : llm.stream({ ...call, ...request })
@@ -2273,6 +2273,11 @@ function createHandler(ctx, config) {
         }
       }
       if (!closed) {
+        if (full.trim() === '') {
+          await writeSse(res, `event: error\ndata: ${JSON.stringify({ type: 'error', error: 'AI 没有返回内容，请重试' })}\n\n`)
+          res.end()
+          return
+        }
         await writeSse(res, `data: ${JSON.stringify({ type: 'done', text: full })}\n\n`)
         res.end()
       }
@@ -2324,7 +2329,7 @@ function createHandler(ctx, config) {
         `用户追问：${question === '' ? '请解释我选中的这段总结。' : question}`,
       ].filter(Boolean).join('\n\n')
       const request = { system, messages: [{ role: 'user', content: [{ type: 'text', text: prompt.slice(0, 70000) }] }], signal: controller.signal }
-      const call = { provider: route.provider, model: route.model, temperature: 0.25, maxTokens: 1200 }
+      const call = { provider: route.provider, model: route.model, temperature: 0.25, maxTokens: 2000 }
       const stream = typeof llm.prepareCall === 'function'
         ? await (async () => { const prepared = await llm.prepareCall(call, controller.signal); return prepared.stream({ ...prepared.config, ...request }) })()
         : llm.stream({ ...call, ...request })
@@ -2339,6 +2344,11 @@ function createHandler(ctx, config) {
         }
       }
       if (!closed) {
+        if (full.trim() === '') {
+          await writeSse(res, `event: error\ndata: ${JSON.stringify({ type: 'error', error: 'AI 没有返回内容，请重试' })}\n\n`)
+          res.end()
+          return
+        }
         await writeSse(res, `data: ${JSON.stringify({ type: 'done', text: full })}\n\n`)
         res.end()
       }
@@ -2572,6 +2582,7 @@ function createHandler(ctx, config) {
     if (typeof heartbeat.unref === 'function') heartbeat.unref()
 
     let fullText = ''
+    let finishReason = ''
     try {
       for await (const chunk of stream) {
         if (closed) break
@@ -2580,6 +2591,7 @@ function createHandler(ctx, config) {
           const sent = await writeSse(res, `data: ${JSON.stringify({ type: 'delta', text: chunk.text })}\n\n`)
           if (!sent) break
         } else if (chunk.type === 'finish') {
+          finishReason = chunk.reason.kind
           if (chunk.reason.kind === 'error') {
             throw new Error(chunk.reason.failure?.message ?? '模型返回了错误')
           }
@@ -2589,6 +2601,14 @@ function createHandler(ctx, config) {
         }
       }
       if (!closed) {
+        if (fullText.trim() === '') {
+          await writeSse(res, `event: error\ndata: ${JSON.stringify({ error: 'AI 没有返回内容，请重试' })}\n\n`)
+          res.end()
+          return
+        }
+        if (finishReason === 'length') {
+          await writeSse(res, `data: ${JSON.stringify({ type: 'truncated', text: '回答达到长度上限，后半段可能被截断。' })}\n\n`)
+        }
         await writeSse(res, `data: ${JSON.stringify({ type: 'done', text: fullText })}\n\n`)
         res.end()
       }

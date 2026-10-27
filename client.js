@@ -317,6 +317,8 @@ window.__ModuleLoader__.load({
       'reader.ask.background': '请补充这段文字必要的背景知识，帮助我理解它为什么这样说。',
       'reader.ask.explain': '请结合上下文解释这段文字。',
       'reader.noModel': '还没有配置模型。请先在 DSH 设置里选择默认模型，或在插件配置中填写 explainProvider 和 explainModel。',
+      'reader.emptyReply': 'AI 没有返回内容，请重试。',
+      'reader.streamIncomplete': '回复中途断开，内容可能不完整，请重试。',
       'reader.noSelection': '先选中一段正文，再让 AI 解释。',
       'reader.copiedShort': '已复制',
       'reader.error': '解释失败',
@@ -607,6 +609,8 @@ window.__ModuleLoader__.load({
       'reader.ask.background': 'Add the background knowledge needed to understand why this passage says that.',
       'reader.ask.explain': 'Explain this passage in context.',
       'reader.noModel': 'No model is configured. Choose a default model in DSH settings, or set explainProvider and explainModel in the plugin config.',
+      'reader.emptyReply': 'AI returned no content. Please retry.',
+      'reader.streamIncomplete': 'The reply was interrupted and may be incomplete. Please retry.',
       'reader.noSelection': 'Select a passage first, then ask the AI to explain it.',
       'reader.copiedShort': 'Copied',
       'reader.error': 'Explanation failed',
@@ -1627,7 +1631,7 @@ window.__ModuleLoader__.load({
       },
     }
 
-    async function consumeSse(response, onDelta) {
+    async function consumeSse(response, onDelta, onNotice) {
       if (response.body === null) throw new Error('浏览器不支持流式响应')
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
@@ -1663,6 +1667,9 @@ window.__ModuleLoader__.load({
             if (parsed !== null && parsed.type === 'delta' && typeof parsed.text === 'string') {
               onDelta(parsed.text)
             }
+            if (parsed !== null && parsed.type === 'truncated' && typeof parsed.text === 'string' && typeof onNotice === 'function') {
+              onNotice(parsed.text)
+            }
             if (parsed !== null && parsed.type === 'done') {
               terminal = true
             }
@@ -1671,12 +1678,13 @@ window.__ModuleLoader__.load({
         }
       }
       if (!terminal) {
-        // A stream that closes cleanly still counts as done; the text is already on screen.
-        return
+        const error = new Error('连接中断，回复可能不完整')
+        error.code = 'STREAM_INCOMPLETE'
+        throw error
       }
     }
 
-    async function explainSelection(payload, signal, onDelta) {
+    async function explainSelection(payload, signal, onDelta, onNotice) {
       const response = await fetch(`${API}/explain`, {
         method: 'POST',
         headers: { accept: 'text/event-stream', 'content-type': 'application/json' },
@@ -1687,7 +1695,7 @@ window.__ModuleLoader__.load({
         await responseJson(response)
         return
       }
-      await consumeSse(response, onDelta)
+      await consumeSse(response, onDelta, onNotice)
     }
 
     async function copyText(text) {
@@ -4109,8 +4117,18 @@ window.__ModuleLoader__.load({
             setAi((current) => current.status === 'streaming'
               ? { ...current, turns: updateLastAssistant(current.turns, (turn) => ({ ...turn, text: turn.text + delta })) }
               : current)
+          }, (notice) => {
+            if (aiAbortRef.current !== controller) return
+            const text = `\n\n${notice}`
+            answer += text
+            setAi((current) => current.status === 'streaming' ? { ...current, turns: updateLastAssistant(current.turns, (turn) => ({ ...turn, text: turn.text + text })) } : current)
           })
           if (aiAbortRef.current !== controller) return
+          if (answer.trim() === '') {
+            const error = new Error('AI 没有返回内容，请重试')
+            error.code = 'EMPTY_REPLY'
+            throw error
+          }
           const finalTurns = [...baseTurns, ...(question.trim() !== '' ? [userTurn(question)] : []), assistantTurn(answer, 'done')]
           setAi((current) => current.status === 'streaming' ? { ...current, status: 'done', turns: finalTurns } : current)
           if (answer.trim() !== '') void persistPaperAnnotation(annotationId, selected, finalTurns)
@@ -4120,7 +4138,8 @@ window.__ModuleLoader__.load({
             setAi((current) => ({ ...current, status: 'idle' }))
             return
           }
-          const message = reason instanceof Error ? reason.message : String(reason)
+          const rawMessage = reason instanceof Error ? reason.message : String(reason)
+          const message = reason !== null && typeof reason === 'object' && reason.code === 'EMPTY_REPLY' ? t('reader.emptyReply') : reason !== null && typeof reason === 'object' && reason.code === 'STREAM_INCOMPLETE' ? t('reader.streamIncomplete') : rawMessage
           setAi((current) => ({ ...current, status: 'error', error: message, turns: updateLastAssistant(current.turns, (turn) => ({ ...turn, status: 'error', error: message })) }))
         } finally {
           if (aiAbortRef.current === controller) aiAbortRef.current = null
@@ -4847,8 +4866,19 @@ window.__ModuleLoader__.load({
                 return { ...current, turns: updateLastAssistant(current.turns, (turn) => ({ ...turn, text: turn.text + delta })) }
               })
             },
+            (notice) => {
+              if (abortRef.current !== controller) return
+              const text = `\n\n${notice}`
+              answer += text
+              setAi((current) => current.status === 'streaming' ? { ...current, turns: updateLastAssistant(current.turns, (turn) => ({ ...turn, text: turn.text + text })) } : current)
+            },
           )
           if (abortRef.current !== controller) return
+          if (answer.trim() === '') {
+            const error = new Error('AI 没有返回内容，请重试')
+            error.code = 'EMPTY_REPLY'
+            throw error
+          }
           const finalTurns = [
             ...baseTurns,
             ...(question.trim() !== '' ? [userTurn(question)] : []),
@@ -4885,7 +4915,7 @@ window.__ModuleLoader__.load({
             return
           }
           const message = reason instanceof Error ? reason.message : String(reason)
-          const friendly = reason !== null && typeof reason === 'object' && reason.code === 'NO_MODEL' ? t('reader.noModel') : message
+          const friendly = reason !== null && typeof reason === 'object' && reason.code === 'NO_MODEL' ? t('reader.noModel') : reason !== null && typeof reason === 'object' && reason.code === 'EMPTY_REPLY' ? t('reader.emptyReply') : reason !== null && typeof reason === 'object' && reason.code === 'STREAM_INCOMPLETE' ? t('reader.streamIncomplete') : message
           setAi((current) => ({
             ...current,
             status: 'error',
