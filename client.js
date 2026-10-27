@@ -427,6 +427,7 @@ window.__ModuleLoader__.load({
       'dossiers.followUpPlaceholder': 'Ask a follow-up about the summary…',
       'dossiers.followUpSelectedPlaceholder': 'Ask about the selected summary text…',
       'dossiers.followUpHint': 'Type a follow-up, or select summary text with the mouse first.',
+      'dossiers.followUpLocked': 'Follow-up will unlock when the summary finishes…',
       'dossiers.selectedSummary': 'Selected summary',
       'dossiers.clearSelection': 'Clear selection',
       'dossiers.askSelected': 'Explain the selected summary passage.',
@@ -1117,6 +1118,7 @@ window.__ModuleLoader__.load({
 .epub-dossier-followup-row input { flex: 1; min-width: 0; height: 32px; padding: 0 9px; border: 1px solid var(--epub-line); border-radius: 7px; outline: 0; background: var(--dsw-alias-bg-base); color: var(--epub-text); font-size: 10.5px; }
 .epub-dossier-followup-row input:focus { border-color: color-mix(in srgb, var(--epub-accent) 45%, var(--epub-line)); }
 .epub-dossier-followup-row .epub-btn { height: 32px; font-size: 10px; }
+.epub-dossier-followup-locked { display: flex; align-items: center; gap: 7px; color: var(--epub-muted); font-size: 9.5px; }
 .epub-dossier-followup-hint { margin: 5px 0 0; color: var(--epub-muted); font-size: 8.5px; line-height: 1.45; }
 .epub-dossier-selection-chip { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; padding: 4px 6px; border-radius: 6px; background: color-mix(in srgb, var(--epub-accent) 8%, transparent); color: var(--epub-muted); font-size: 8.5px; line-height: 1.4; }
 .epub-dossier-selection-chip span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -3273,6 +3275,7 @@ window.__ModuleLoader__.load({
       const folderLabel = activeFolder === 'all' ? t('dossiers.all') : activeFolder === 'root' ? t('dossiers.root') : folder?.name ?? t('dossiers.title')
       const documents = state.items.filter((item) => item.kind === 'document' && (activeFolder === 'all' || item.folderId === folderId))
       const shown = search.query !== '' ? search.results : documents
+      const summaryLocked = summary.busy || summary.status === 'streaming' || summary.askStatus === 'streaming'
 
       function skillsFor(id) {
         return state.items.filter((item) => item.kind === 'skill' && item.folderId === id)
@@ -3481,6 +3484,7 @@ window.__ModuleLoader__.load({
       }
 
       function captureSummarySelection(event) {
+        if (summaryLocked) return
         const selection = window.getSelection()
         const text = selection === null ? '' : selection.toString().trim()
         if (text === '') return
@@ -3491,7 +3495,7 @@ window.__ModuleLoader__.load({
       }
 
       async function askSummary() {
-        if (summary.busy || summary.askStatus === 'streaming') return
+        if (summaryLocked) return
         const question = summary.question.trim()
         const selected = summary.selection.trim()
         if (question === '' && selected === '') return
@@ -3771,7 +3775,7 @@ window.__ModuleLoader__.load({
                 h('header', null,
                   h('div', null, h('p', { className: 'epub-eyebrow' }, 'AI DOSSIER'), h('h3', null, summary.title)),
                   h('div', { className: 'epub-dossier-summary-actions' },
-                    summary.busy || summary.askStatus === 'streaming' ? h('button', { type: 'button', className: 'epub-btn', onClick: stopSummary }, t('dossiers.stop')) : null,
+                    summaryLocked ? h('button', { type: 'button', className: 'epub-btn', onClick: stopSummary }, t('dossiers.stop')) : null,
                     h('button', { type: 'button', className: 'epub-icon-btn', onClick: closeSummary, title: t('papers.close') }, h(IconX, { size: 16 })),
                   ),
                 ),
@@ -3784,7 +3788,9 @@ window.__ModuleLoader__.load({
                     h('div', null, turn.text === '' && turn.status === 'streaming' ? h(Spinner, null) : turn.text),
                   )),
                 ),
-                h('div', { className: 'epub-dossier-followup' },
+                summaryLocked
+                  ? h('div', { className: 'epub-dossier-followup epub-dossier-followup-locked' }, h(Spinner, null), h('span', null, t('dossiers.followUpLocked')))
+                  : h('div', { className: 'epub-dossier-followup' },
                   summary.selection !== ''
                     ? h('div', { className: 'epub-dossier-selection-chip' },
                         h('span', null, `${t('dossiers.selectedSummary')}：${summary.selection.slice(0, 80)}${summary.selection.length > 80 ? '…' : ''}`),
@@ -3798,9 +3804,9 @@ window.__ModuleLoader__.load({
                       onChange: (event) => setSummary((current) => ({ ...current, question: event.target.value })),
                       onKeyDown: (event) => { if (event.key === 'Enter') { event.preventDefault(); void askSummary() } },
                       placeholder: summary.selection === '' ? t('dossiers.followUpPlaceholder') : t('dossiers.followUpSelectedPlaceholder'),
-                      disabled: summary.busy || summary.askStatus === 'streaming',
+                      disabled: summaryLocked,
                     }),
-                    h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => void askSummary(), disabled: summary.busy || summary.askStatus === 'streaming' || (summary.question.trim() === '' && summary.selection === '') }, t('dossiers.send')),
+                    h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => void askSummary(), disabled: summaryLocked || (summary.question.trim() === '' && summary.selection === '') }, t('dossiers.send')),
                   ),
                   h('p', { className: 'epub-dossier-followup-hint' }, t('dossiers.followUpHint')),
                 ),
