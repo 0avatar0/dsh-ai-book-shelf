@@ -3228,7 +3228,7 @@ window.__ModuleLoader__.load({
       const [expandedFolders, setExpandedFolders] = React.useState(() => new Set())
       const [clearConfirm, setClearConfirm] = React.useState(null)
       const [skillEditor, setSkillEditor] = React.useState(null)
-      const [summary, setSummary] = React.useState({ open: false, status: 'idle', text: '', title: '', error: '', statusText: '', turns: [], question: '', selection: '', askStatus: 'idle' })
+      const [summary, setSummary] = React.useState({ open: false, status: 'idle', busy: false, text: '', title: '', error: '', statusText: '', turns: [], question: '', selection: '', askStatus: 'idle' })
       const fileRef = React.useRef(null)
       const summaryAbort = React.useRef(null)
       const summaryInputRef = React.useRef(null)
@@ -3443,7 +3443,7 @@ window.__ModuleLoader__.load({
         summaryAbort.current = null
         setSummary((current) => {
           const turns = current.turns.map((turn, index) => index === current.turns.length - 1 && turn.role === 'assistant' && turn.status === 'streaming' ? { ...turn, status: 'idle' } : turn)
-          return { ...current, turns, status: current.status === 'streaming' ? 'idle' : current.status, askStatus: current.askStatus === 'streaming' ? 'idle' : current.askStatus, statusText: '' }
+          return { ...current, turns, busy: false, status: current.status === 'streaming' ? 'idle' : current.status, askStatus: current.askStatus === 'streaming' ? 'idle' : current.askStatus, statusText: '' }
         })
       }
 
@@ -3451,7 +3451,7 @@ window.__ModuleLoader__.load({
         const controller = new AbortController()
         summaryAbort.current?.abort()
         summaryAbort.current = controller
-        setSummary({ open: true, status: 'streaming', text: '', title: options.title ?? t('dossiers.summaryTitle'), error: '', statusText: t('dossiers.summaryPreparing'), turns: [], question: '', selection: '', askStatus: 'idle' })
+        setSummary({ open: true, status: 'streaming', busy: true, text: '', title: options.title ?? t('dossiers.summaryTitle'), error: '', statusText: t('dossiers.summaryPreparing'), turns: [], question: '', selection: '', askStatus: 'idle' })
         try {
           await apiStreamJson('/dossiers/summary', {
             folderId,
@@ -3474,6 +3474,9 @@ window.__ModuleLoader__.load({
         } catch (reason) {
           if (controller.signal.aborted) return
           setSummary((current) => ({ ...current, status: 'error', statusText: '', error: reason instanceof Error ? reason.message : String(reason) }))
+        } finally {
+          summaryAbort.current = null
+          setSummary((current) => ({ ...current, busy: false }))
         }
       }
 
@@ -3488,7 +3491,7 @@ window.__ModuleLoader__.load({
       }
 
       async function askSummary() {
-        if (summary.status === 'streaming' || summary.askStatus === 'streaming') return
+        if (summary.busy || summary.askStatus === 'streaming') return
         const question = summary.question.trim()
         const selected = summary.selection.trim()
         if (question === '' && selected === '') return
@@ -3554,7 +3557,7 @@ window.__ModuleLoader__.load({
       function closeSummary() {
         summaryAbort.current?.abort()
         summaryAbort.current = null
-        setSummary({ open: false, status: 'idle', text: '', title: '', error: '', statusText: '', turns: [], question: '', selection: '', askStatus: 'idle' })
+        setSummary({ open: false, status: 'idle', busy: false, text: '', title: '', error: '', statusText: '', turns: [], question: '', selection: '', askStatus: 'idle' })
       }
 
       async function clearFolder() {
@@ -3768,7 +3771,7 @@ window.__ModuleLoader__.load({
                 h('header', null,
                   h('div', null, h('p', { className: 'epub-eyebrow' }, 'AI DOSSIER'), h('h3', null, summary.title)),
                   h('div', { className: 'epub-dossier-summary-actions' },
-                    summary.status === 'streaming' || summary.askStatus === 'streaming' ? h('button', { type: 'button', className: 'epub-btn', onClick: stopSummary }, t('dossiers.stop')) : null,
+                    summary.busy || summary.askStatus === 'streaming' ? h('button', { type: 'button', className: 'epub-btn', onClick: stopSummary }, t('dossiers.stop')) : null,
                     h('button', { type: 'button', className: 'epub-icon-btn', onClick: closeSummary, title: t('papers.close') }, h(IconX, { size: 16 })),
                   ),
                 ),
@@ -3795,9 +3798,9 @@ window.__ModuleLoader__.load({
                       onChange: (event) => setSummary((current) => ({ ...current, question: event.target.value })),
                       onKeyDown: (event) => { if (event.key === 'Enter') { event.preventDefault(); void askSummary() } },
                       placeholder: summary.selection === '' ? t('dossiers.followUpPlaceholder') : t('dossiers.followUpSelectedPlaceholder'),
-                      disabled: summary.status === 'streaming' || summary.askStatus === 'streaming',
+                      disabled: summary.busy || summary.askStatus === 'streaming',
                     }),
-                    h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => void askSummary(), disabled: summary.status === 'streaming' || summary.askStatus === 'streaming' || (summary.question.trim() === '' && summary.selection === '') }, t('dossiers.send')),
+                    h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => void askSummary(), disabled: summary.busy || summary.askStatus === 'streaming' || (summary.question.trim() === '' && summary.selection === '') }, t('dossiers.send')),
                   ),
                   h('p', { className: 'epub-dossier-followup-hint' }, t('dossiers.followUpHint')),
                 ),
