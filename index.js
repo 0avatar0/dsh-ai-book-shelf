@@ -571,6 +571,52 @@ function traditionalizeChinese(value) {
   return [...text].map((character) => SIMPLIFIED_TO_TRADITIONAL[character] ?? character).join('')
 }
 
+function fuzzyFindText(text, needle) {
+  const source = String(text ?? '').toLowerCase()
+  const term = String(needle ?? '').toLowerCase().trim()
+  if (source === '' || term === '') return null
+  const exact = source.indexOf(term)
+  if (exact !== -1) return { score: 1000 + term.length * 20, index: exact }
+  let from = 0
+  let first = -1
+  let last = -1
+  for (const character of term) {
+    const at = source.indexOf(character, from)
+    if (at === -1) return null
+    if (first === -1) first = at
+    last = at
+    from = at + 1
+  }
+  const span = last - first + 1
+  if (span > term.length * 6 + 12) return null
+  return { score: Math.max(1, 500 - (span - term.length) * 3 + term.length * 8), index: first }
+}
+
+function fuzzyDossierMatch(text, query) {
+  const variants = [...new Set([String(query ?? '').trim(), traditionalizeChinese(query)])].filter((entry) => entry !== '')
+  let best = null
+  for (const variant of variants) {
+    const whole = fuzzyFindText(text, variant)
+    if (whole !== null) {
+      const score = whole.score + 200
+      if (best === null || score > best.score) best = { score, index: whole.index }
+    }
+    const parts = variant.split(/\s+/).filter((entry) => entry !== '')
+    if (parts.length === 0) continue
+    let score = 0
+    let index = -1
+    let matched = true
+    for (const part of parts) {
+      const hit = fuzzyFindText(text, part)
+      if (hit === null) { matched = false; break }
+      score += hit.score
+      if (index === -1 || hit.index < index) index = hit.index
+    }
+    if (matched && (best === null || score > best.score)) best = { score, index }
+  }
+  return best
+}
+
 function parseGutenbergSearch(html, sourceId = 'gutenberg', sourceName = 'Project Gutenberg', language = '') {
   const results = []
   const blocks = html.matchAll(/<li\b[^>]*class="[^"]*\bbooklink\b[^"]*"[^>]*>([\s\S]*?)<\/li>/gi)
@@ -2052,21 +2098,14 @@ function createHandler(ctx, config) {
   async function searchDossiers(folderId, query) {
     const archiveDir = await ensureArchiveDir(config, ctx)
     const library = await readDossierLibrary(archiveDir)
-    const terms = [...new Set([query, traditionalizeChinese(query)])].filter((entry) => entry.trim() !== '')
-    const needles = terms.map((entry) => entry.toLowerCase())
     const docs = library.items.filter((item) => item.kind === 'document' && (folderId === '' || item.folderId === folderId))
     const matches = []
     for (const item of docs) {
       const text = await dossierTextForItem(item, archiveDir)
-      const lower = text.toLowerCase()
-      let best = -1
-      for (const needle of needles) {
-        const at = lower.indexOf(needle)
-        if (at !== -1 && (best === -1 || at < best)) best = at
-      }
-      if (best === -1) continue
-      const start = Math.max(0, best - 90)
-      matches.push({ id: item.id, title: item.title, folderId: item.folderId ?? '', snippet: text.slice(start, best + 180).replace(/\s+/g, ' ').trim() })
+      const hit = fuzzyDossierMatch(text, query)
+      if (hit === null) continue
+      const start = Math.max(0, hit.index - 90)
+      matches.push({ id: item.id, title: item.title, folderId: item.folderId ?? '', score: hit.score, snippet: text.slice(start, hit.index + 180).replace(/\s+/g, ' ').trim() })
       if (matches.length >= 60) break
     }
     return { matches, total: matches.length, query }
@@ -2075,8 +2114,6 @@ function createHandler(ctx, config) {
   async function streamDossierSearch(folderId, query, res) {
     const archiveDir = await ensureArchiveDir(config, ctx)
     const library = await readDossierLibrary(archiveDir)
-    const terms = [...new Set([query, traditionalizeChinese(query)])].filter((entry) => entry.trim() !== '')
-    const needles = terms.map((entry) => entry.toLowerCase())
     const docs = library.items.filter((item) => item.kind === 'document' && (folderId === '' || item.folderId === folderId))
     let closed = false
     res.on('close', () => { if (!res.writableEnded) closed = true })
@@ -2094,15 +2131,10 @@ function createHandler(ctx, config) {
       for (const item of docs) {
         if (closed) break
         const text = await dossierTextForItem(item, archiveDir)
-        const lower = text.toLowerCase()
-        let best = -1
-        for (const needle of needles) {
-          const at = lower.indexOf(needle)
-          if (at !== -1 && (best === -1 || at < best)) best = at
-        }
-        if (best === -1) continue
-        const start = Math.max(0, best - 90)
-        const match = { id: item.id, title: item.title, folderId: item.folderId ?? '', snippet: text.slice(start, best + 180).replace(/\s+/g, ' ').trim() }
+        const hit = fuzzyDossierMatch(text, query)
+        if (hit === null) continue
+        const start = Math.max(0, hit.index - 90)
+        const match = { id: item.id, title: item.title, folderId: item.folderId ?? '', score: hit.score, snippet: text.slice(start, hit.index + 180).replace(/\s+/g, ' ').trim() }
         total += 1
         if (!(await writeSse(res, `data: ${JSON.stringify({ type: 'match', match })}\n\n`))) break
         if (total >= 60) break
