@@ -1,4 +1,4 @@
-# DSH AI 书架 2.6.15 — 安装说明
+# DSH AI 书架 2.6.16 — 安装说明
 
 这是一个 DSH Web UI 持久化插件：在侧边栏增加「AI 书架」，支持多格式阅读、选中文字 AI 解释与追问、线上搜书、论文模式和卷宗模式。
 
@@ -20,15 +20,15 @@
 
 ## 安装到另一台电脑
 
-1. 把 `dsh-ai-book-shelf-2.6.15.tgz` 复制到目标电脑的任意目录。
+1. 把 `dsh-ai-book-shelf-2.6.16.tgz` 复制到目标电脑的任意目录。
    - 建议放在 `Downloads` 这类简单路径下。
    - **不要解压** tgz。
 2. 打开 DSH Web GUI。
 3. 左侧点击 **Plugins / 插件**。
 4. 点击 **Add plugin / 添加插件**，选择 **Install a third-party plugin / 安装第三方插件**。
 5. 在包输入框中粘贴 tgz 的**绝对路径**（不是目录），例如：
-   - Windows：`C:\Users\你的用户名\Downloads\dsh-ai-book-shelf-2.6.15.tgz`
-   - macOS / Linux：`/Users/你的用户名/Downloads/dsh-ai-book-shelf-2.6.15.tgz`
+   - Windows：`C:\Users\你的用户名\Downloads\dsh-ai-book-shelf-2.6.16.tgz`
+   - macOS / Linux：`/Users/你的用户名/Downloads/dsh-ai-book-shelf-2.6.16.tgz`
 6. 点击 **Install / 安装**，等待安装完成。新 bundle 默认启用。
 7. 刷新页面。左侧应出现 **AI 书架** 图标。
 8. 如果没出现，回到 **Plugins** 页面，确认 `@local/dsh-epub-reader` 处于 **On** 状态。
@@ -167,13 +167,13 @@ PDF 解析使用插件内置的 PDF.js，不需要额外安装 npm 依赖。
 `SHA256SUMS.txt` 中有 tgz 的 SHA-256。Windows 可用：
 
 ```powershell
-Get-FileHash .\dsh-ai-book-shelf-2.6.15.tgz -Algorithm SHA256
+Get-FileHash .\dsh-ai-book-shelf-2.6.16.tgz -Algorithm SHA256
 ```
 
 macOS / Linux：
 
 ```bash
-sha256sum dsh-ai-book-shelf-2.6.15.tgz
+sha256sum dsh-ai-book-shelf-2.6.16.tgz
 ```
 
 ## 如果要发布到 npm
@@ -185,4 +185,4 @@ sha256sum dsh-ai-book-shelf-2.6.15.tgz
 1. 注册 <https://www.npmjs.com> 账号并登录（建议开启 2FA）。
 2. 在插件目录执行 `npm login`，再运行 `scripts/publish-npm.sh`。
 3. 脚本会复制并改名为 `dsh-ai-book-shelf` 后发布，不会破坏本机安装。
-4. 其他电脑在 Plugins → Add plugin 中填 `dsh-ai-book-shelf@2.6.15`。
+4. 其他电脑在 Plugins → Add plugin 中填 `dsh-ai-book-shelf@2.6.16`。

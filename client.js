@@ -149,6 +149,7 @@ window.__ModuleLoader__.load({
       'dossiers.summaryTitle': 'AI 卷宗总结',
       'dossiers.summarySearchTitle': 'AI 总结搜索结果',
       'dossiers.summarizing': '正在分析卷宗…',
+      'dossiers.summaryPreparing': '正在准备总结…',
       'dossiers.searching': '搜索中…',
       'dossiers.stopSearch': '停止搜索',
       'dossiers.searchCount': '找到 {count} 个',
@@ -413,6 +414,7 @@ window.__ModuleLoader__.load({
       'dossiers.summaryTitle': 'AI dossier summary',
       'dossiers.summarySearchTitle': 'AI search summary',
       'dossiers.summarizing': 'Analyzing dossiers…',
+      'dossiers.summaryPreparing': 'Preparing summary…',
       'dossiers.searching': 'Searching…',
       'dossiers.stopSearch': 'Stop search',
       'dossiers.searchCount': '{count} found',
@@ -1086,6 +1088,7 @@ window.__ModuleLoader__.load({
 .epub-dossier-summary header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--epub-line); }
 .epub-dossier-summary h3 { margin: 2px 0 0; font-size: 15px; }
 .epub-dossier-summary-actions { display: flex; align-items: center; gap: 5px; }
+.epub-dossier-summary-status { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; color: var(--epub-muted); font-family: var(--epub-sans, inherit); font-size: 9.5px; line-height: 1.5; }
 .epub-dossier-summary-body { flex: 1; overflow: auto; padding: 16px; color: var(--epub-text); font-family: var(--epub-serif); font-size: 13px; line-height: 1.8; white-space: pre-wrap; }
 .epub-dossier-summary-error { margin: 0; padding: 10px 16px 0; color: var(--epub-danger); font-size: 10px; }
 .epub-paper-compare { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
@@ -3194,7 +3197,7 @@ window.__ModuleLoader__.load({
       const [expandedFolders, setExpandedFolders] = React.useState(() => new Set())
       const [clearConfirm, setClearConfirm] = React.useState(null)
       const [skillEditor, setSkillEditor] = React.useState(null)
-      const [summary, setSummary] = React.useState({ open: false, status: 'idle', text: '', title: '', error: '' })
+      const [summary, setSummary] = React.useState({ open: false, status: 'idle', text: '', title: '', error: '', statusText: '' })
       const fileRef = React.useRef(null)
       const summaryAbort = React.useRef(null)
       const searchAbort = React.useRef(null)
@@ -3406,14 +3409,14 @@ window.__ModuleLoader__.load({
       function stopSummary() {
         summaryAbort.current?.abort()
         summaryAbort.current = null
-        setSummary((current) => ({ ...current, status: current.status === 'streaming' ? 'idle' : current.status }))
+        setSummary((current) => ({ ...current, status: current.status === 'streaming' ? 'idle' : current.status, statusText: '' }))
       }
 
       async function startSummary(options = {}) {
         const controller = new AbortController()
         summaryAbort.current?.abort()
         summaryAbort.current = controller
-        setSummary({ open: true, status: 'streaming', text: '', title: options.title ?? t('dossiers.summaryTitle'), error: '' })
+        setSummary({ open: true, status: 'streaming', text: '', title: options.title ?? t('dossiers.summaryTitle'), error: '', statusText: t('dossiers.summaryPreparing') })
         try {
           await apiStreamJson('/dossiers/summary', {
             folderId,
@@ -3422,25 +3425,27 @@ window.__ModuleLoader__.load({
           }, {
             signal: controller.signal,
             onEvent: (event) => {
-              if (event.type === 'delta' && typeof event.text === 'string') {
+              if (event.type === 'status' && typeof event.text === 'string') {
+                setSummary((current) => ({ ...current, statusText: event.text }))
+              } else if (event.type === 'delta' && typeof event.text === 'string') {
                 setSummary((current) => ({ ...current, text: current.text + event.text }))
               } else if (event.type === 'done') {
-                setSummary((current) => ({ ...current, status: 'done', text: event.text ?? current.text }))
+                setSummary((current) => ({ ...current, status: 'done', statusText: '', text: event.text ?? current.text }))
               } else if (event.type === 'error') {
-                setSummary((current) => ({ ...current, status: 'error', error: String(event.error ?? 'AI 总结失败') }))
+                setSummary((current) => ({ ...current, status: 'error', statusText: '', error: String(event.error ?? 'AI 总结失败') }))
               }
             },
           })
         } catch (reason) {
           if (controller.signal.aborted) return
-          setSummary((current) => ({ ...current, status: 'error', error: reason instanceof Error ? reason.message : String(reason) }))
+          setSummary((current) => ({ ...current, status: 'error', statusText: '', error: reason instanceof Error ? reason.message : String(reason) }))
         }
       }
 
       function closeSummary() {
         summaryAbort.current?.abort()
         summaryAbort.current = null
-        setSummary({ open: false, status: 'idle', text: '', title: '', error: '' })
+        setSummary({ open: false, status: 'idle', text: '', title: '', error: '', statusText: '' })
       }
 
       async function clearFolder() {
@@ -3659,7 +3664,10 @@ window.__ModuleLoader__.load({
                   ),
                 ),
                 summary.error !== '' ? h('p', { className: 'epub-dossier-summary-error' }, summary.error) : null,
-                h('div', { className: 'epub-dossier-summary-body' }, summary.status === 'streaming' && summary.text === '' ? h(Spinner, null) : summary.text),
+                h('div', { className: 'epub-dossier-summary-body' },
+                  summary.statusText !== '' ? h('div', { className: 'epub-dossier-summary-status' }, h(Spinner, null), h('span', null, summary.statusText)) : null,
+                  summary.status === 'streaming' && summary.text === '' ? null : summary.text,
+                ),
               ),
             )
           : null,

@@ -2155,40 +2155,68 @@ function createHandler(ctx, config) {
     const skills = library.items.filter((item) => item.kind === 'skill' && (folderId === '' || item.folderId === folderId))
     const route = resolveModelRoute(ctx, config)
     if (route === undefined) throw new HttpError(503, 'NO_MODEL', '还没有选择模型')
-    const sections = []
-    for (const item of selected.slice(0, 40)) {
-      const text = (await dossierTextForItem(item, archiveDir)).slice(0, 6000)
-      if (text.trim() !== '') sections.push(`【${item.title}】\n${text}`)
-    }
-    if (sections.length === 0) throw new HttpError(422, 'DOSSIER_NO_TEXT', '卷宗文件没有可总结的文字')
-    const skillText = skills
-      .filter((item) => String(item.text ?? '').trim() !== '')
-      .map((item) => `## ${item.title}\n${String(item.text ?? '').slice(0, 6000)}`)
-      .join('\n\n')
-    const system = '你是卷宗分析助手。请严格依据提供的卷宗内容作答；有 Skill 时优先遵循 Skill 中的方法与格式。不要编造卷宗中没有的事实。'
-    const prompt = [
-      `卷宗：${folder?.name ?? '未分类卷宗'}`,
-      query === '' ? '请总结这个卷宗的核心内容、关键事实、争议点、时间线和待办事项。' : `请围绕以下问题总结卷宗：${query}`,
-      skillText === '' ? '' : `\n<!-- SKILLS -->\n${skillText}\n<!-- /SKILLS -->`,
-      `\n<!-- DOSSIERS -->\n${sections.join('\n\n')}\n<!-- /DOSSIERS -->`,
-    ].filter(Boolean).join('\n')
     const llm = ctx.get('llm')
     if (llm === undefined || typeof llm.stream !== 'function') throw new HttpError(503, 'NO_MODEL', '当前环境没有可用的模型服务')
+
     const controller = new AbortController()
     let closed = false
     res.on('close', () => { if (!res.writableEnded) { closed = true; controller.abort() } })
-    const request = { system, messages: [{ role: 'user', content: [{ type: 'text', text: prompt.slice(0, 60000) }] }], signal: controller.signal }
-    const call = { provider: route.provider, model: route.model, temperature: 0.2, maxTokens: 1800 }
-    const stream = typeof llm.prepareCall === 'function'
-      ? await (async () => { const prepared = await llm.prepareCall(call, controller.signal); return prepared.stream({ ...prepared.config, ...request }) })()
-      : llm.stream({ ...call, ...request })
-    res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' })
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+      'X-Content-Type-Options': 'nosniff',
+    })
     if (typeof res.flushHeaders === 'function') res.flushHeaders()
     await writeSse(res, ': connected\n\n')
     const heartbeat = setInterval(() => { if (!closed) void writeSse(res, ': ping\n\n') }, 15000)
     if (typeof heartbeat.unref === 'function') heartbeat.unref()
-    let full = ''
+
+    const status = async (text) => {
+      if (!closed) await writeSse(res, `data: ${JSON.stringify({ type: 'status', text })}\n\n`)
+    }
+    const fail = async (error) => {
+      if (!closed) {
+        await writeSse(res, `event: error\ndata: ${JSON.stringify({ type: 'error', error: publicErrorMessage(error) })}\n\n`)
+        res.end()
+      }
+    }
+
     try {
+      const limit = Math.min(selected.length, 40)
+      await status(`正在读取 ${limit} 个卷宗…`)
+      const sections = []
+      let read = 0
+      for (const item of selected.slice(0, limit)) {
+        if (closed) break
+        read += 1
+        const text = (await dossierTextForItem(item, archiveDir)).slice(0, 6000)
+        if (text.trim() !== '') sections.push(`【${item.title}】\n${text}`)
+        await status(`已读取 ${read}/${limit}：${item.title}`)
+      }
+      if (sections.length === 0) {
+        await fail(new Error('卷宗文件没有可总结的文字'))
+        return
+      }
+      const skillText = skills
+        .filter((item) => String(item.text ?? '').trim() !== '')
+        .map((item) => `## ${item.title}\n${String(item.text ?? '').slice(0, 6000)}`)
+        .join('\n\n')
+      const system = '你是卷宗分析助手。请严格依据提供的卷宗内容作答；有 Skill 时优先遵循 Skill 中的方法与格式。不要编造卷宗中没有的事实。'
+      const prompt = [
+        `卷宗：${folder?.name ?? '未分类卷宗'}`,
+        query === '' ? '请总结这个卷宗的核心内容、关键事实、争议点、时间线和待办事项。' : `请围绕以下问题总结卷宗：${query}`,
+        skillText === '' ? '' : `\n<!-- SKILLS -->\n${skillText}\n<!-- /SKILLS -->`,
+        `\n<!-- DOSSIERS -->\n${sections.join('\n\n')}\n<!-- /DOSSIERS -->`,
+      ].filter(Boolean).join('\n')
+      await status('正在生成总结…')
+      const request = { system, messages: [{ role: 'user', content: [{ type: 'text', text: prompt.slice(0, 60000) }] }], signal: controller.signal }
+      const call = { provider: route.provider, model: route.model, temperature: 0.2, maxTokens: 1800 }
+      const stream = typeof llm.prepareCall === 'function'
+        ? await (async () => { const prepared = await llm.prepareCall(call, controller.signal); return prepared.stream({ ...prepared.config, ...request }) })()
+        : llm.stream({ ...call, ...request })
+      let full = ''
       for await (const chunk of stream) {
         if (closed) break
         if (chunk.type === 'text-delta') {
@@ -2203,10 +2231,7 @@ function createHandler(ctx, config) {
         res.end()
       }
     } catch (error) {
-      if (!closed) {
-        await writeSse(res, `event: error\ndata: ${JSON.stringify({ error: publicErrorMessage(error) })}\n\n`)
-        res.end()
-      }
+      await fail(error)
     } finally {
       clearInterval(heartbeat)
       if (!closed) controller.abort()
