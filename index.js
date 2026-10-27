@@ -617,59 +617,18 @@ function fuzzyDossierMatch(text, query) {
   return best
 }
 
-function normalizeCaseNumber(value) {
-  return String(value ?? '').toLowerCase().replace(/[\s（）()【】\[\]]/g, '')
-}
-
-function extractDossierMeta(text) {
-  const source = String(text ?? '')
-  const dateValues = []
-  for (const match of source.matchAll(/(\d{4})\s*[年./-]\s*(\d{1,2})\s*[月./-]\s*(\d{1,2})\s*日?/g)) {
-    const month = String(match[2]).padStart(2, '0')
-    const day = String(match[3]).padStart(2, '0')
-    dateValues.push(`${match[1]}-${month}-${day}`)
+function dossierKeywordMatch(text, keywords) {
+  const list = keywords.map((entry) => String(entry ?? '').trim()).filter((entry) => entry !== '')
+  if (list.length === 0) return null
+  let score = 0
+  let index = -1
+  for (const keyword of list) {
+    const hit = fuzzyDossierMatch(text, keyword)
+    if (hit === null) return null
+    score += hit.score
+    if (index === -1 || hit.index < index) index = hit.index
   }
-  const caseNumbers = [...source.matchAll(/[（(]\s*\d{4}\s*[）)]\s*[^\s，,。；;]{1,30}?号/g)].map((match) => match[0])
-  const courtMatches = [...source.matchAll(/([\u4e00-\u9fa5]{2,15}(?:人民法院|法院))/g)]
-  const courtMatch = courtMatches.length === 0 ? null : courtMatches[courtMatches.length - 1]
-  const causeMatch = source.match(/案由[：:]\s*([^\s，,。；;]{2,40})/)
-  const parties = []
-  for (const match of source.matchAll(/(原告|被告|上诉人|被上诉人|申请人|被申请人|第三人)[：:]?\s*([^\s，,。；;]{2,20})/g)) {
-    const name = match[2].replace(/(?:，|,|。|；|;).*$/, '').trim()
-    if (name !== '') parties.push(`${match[1]}：${name}`)
-  }
-  return {
-    court: courtMatch === null ? '' : courtMatch[1].trim(),
-    caseNumbers: [...new Set(caseNumbers)],
-    dates: [...new Set(dateValues)].sort(),
-    parties: [...new Set(parties)].slice(0, 8),
-    cause: causeMatch === null ? '' : causeMatch[1].trim(),
-  }
-}
-
-function dossierFilterMatch(text, meta, filters) {
-  const keyword = String(filters.q ?? '').trim()
-  if (keyword !== '' && fuzzyDossierMatch(text, keyword) === null) return false
-  const court = String(filters.court ?? '').trim()
-  if (court !== '' && fuzzyFindText(`${meta.court}\n${text}`, court) === null) return false
-  const party = String(filters.party ?? '').trim()
-  if (party !== '' && fuzzyFindText(`${meta.parties.join('\n')}\n${text}`, party) === null) return false
-  const cause = String(filters.cause ?? '').trim()
-  if (cause !== '' && fuzzyFindText(`${meta.cause}\n${text}`, cause) === null) return false
-  const caseNo = String(filters.caseNo ?? '').trim()
-  if (caseNo !== '') {
-    const needle = normalizeCaseNumber(caseNo)
-    if (!meta.caseNumbers.some((entry) => normalizeCaseNumber(entry).includes(needle) || needle.includes(normalizeCaseNumber(entry)))) return false
-  }
-  const from = String(filters.dateFrom ?? '').trim()
-  const to = String(filters.dateTo ?? '').trim()
-  if (from !== '' || to !== '') {
-    const dates = meta.dates
-    if (dates.length === 0) return false
-    const inRange = dates.some((date) => (from === '' || date >= from) && (to === '' || date <= to))
-    if (!inRange) return false
-  }
-  return true
+  return { score, index }
 }
 
 function parseGutenbergSearch(html, sourceId = 'gutenberg', sourceName = 'Project Gutenberg', language = '') {
@@ -2150,25 +2109,23 @@ function createHandler(ctx, config) {
     return { deleted: true }
   }
 
-  async function searchDossiers(folderId, filters) {
+  async function searchDossiers(folderId, keywords) {
     const archiveDir = await ensureArchiveDir(config, ctx)
     const library = await readDossierLibrary(archiveDir)
     const docs = library.items.filter((item) => item.kind === 'document' && (folderId === '' || item.folderId === folderId))
     const matches = []
     for (const item of docs) {
       const text = await dossierTextForItem(item, archiveDir)
-      const hit = String(filters.q ?? '').trim() === '' ? null : fuzzyDossierMatch(text, filters.q)
-      const meta = extractDossierMeta(text)
-      if (!dossierFilterMatch(text, meta, filters)) continue
-      const index = hit === null ? 0 : hit.index
-      const start = Math.max(0, index - 90)
-      matches.push({ id: item.id, title: item.title, folderId: item.folderId ?? '', score: hit === null ? 0 : hit.score, meta, snippet: text.slice(start, index + 220).replace(/\s+/g, ' ').trim() })
+      const hit = dossierKeywordMatch(text, keywords)
+      if (hit === null) continue
+      const start = Math.max(0, hit.index - 90)
+      matches.push({ id: item.id, title: item.title, folderId: item.folderId ?? '', score: hit.score, snippet: text.slice(start, hit.index + 220).replace(/\s+/g, ' ').trim() })
       if (matches.length >= 60) break
     }
-    return { matches, total: matches.length, query: filters.q ?? '' }
+    return { matches, total: matches.length, query: keywords.join(' ') }
   }
 
-  async function streamDossierSearch(folderId, filters, res) {
+  async function streamDossierSearch(folderId, keywords, res) {
     const archiveDir = await ensureArchiveDir(config, ctx)
     const library = await readDossierLibrary(archiveDir)
     const docs = library.items.filter((item) => item.kind === 'document' && (folderId === '' || item.folderId === folderId))
@@ -2188,18 +2145,16 @@ function createHandler(ctx, config) {
       for (const item of docs) {
         if (closed) break
         const text = await dossierTextForItem(item, archiveDir)
-        const hit = String(filters.q ?? '').trim() === '' ? null : fuzzyDossierMatch(text, filters.q)
-        const meta = extractDossierMeta(text)
-        if (!dossierFilterMatch(text, meta, filters)) continue
-        const index = hit === null ? 0 : hit.index
-        const start = Math.max(0, index - 90)
-        const match = { id: item.id, title: item.title, folderId: item.folderId ?? '', score: hit === null ? 0 : hit.score, meta, snippet: text.slice(start, index + 220).replace(/\s+/g, ' ').trim() }
+        const hit = dossierKeywordMatch(text, keywords)
+        if (hit === null) continue
+        const start = Math.max(0, hit.index - 90)
+        const match = { id: item.id, title: item.title, folderId: item.folderId ?? '', score: hit.score, snippet: text.slice(start, hit.index + 220).replace(/\s+/g, ' ').trim() }
         total += 1
         if (!(await writeSse(res, `data: ${JSON.stringify({ type: 'match', match })}\n\n`))) break
         if (total >= 60) break
       }
       if (!closed) {
-        await writeSse(res, `data: ${JSON.stringify({ type: 'done', total, query: filters.q ?? '' })}\n\n`)
+        await writeSse(res, `data: ${JSON.stringify({ type: 'done', total, query: keywords.join(' ') })}\n\n`)
         res.end()
       }
     } catch (error) {
@@ -3091,17 +3046,9 @@ function createHandler(ctx, config) {
 
       if (method === 'GET' && pathname === '/dossiers/search/stream') {
         const folder = (url.searchParams.get('folder') ?? '').trim()
-        const filters = {
-          q: (url.searchParams.get('q') ?? '').trim(),
-          court: (url.searchParams.get('court') ?? '').trim(),
-          caseNo: (url.searchParams.get('caseNo') ?? '').trim(),
-          party: (url.searchParams.get('party') ?? '').trim(),
-          cause: (url.searchParams.get('cause') ?? '').trim(),
-          dateFrom: (url.searchParams.get('dateFrom') ?? '').trim(),
-          dateTo: (url.searchParams.get('dateTo') ?? '').trim(),
-        }
-        if (Object.values(filters).every((value) => value === '')) throw new HttpError(400, 'EMPTY_QUERY', '请输入关键词或至少一个筛选条件')
-        await streamDossierSearch(folder, filters, res)
+        const keywords = url.searchParams.getAll('q').map((entry) => entry.trim()).filter((entry) => entry !== '')
+        if (keywords.length === 0) throw new HttpError(400, 'EMPTY_QUERY', '请输入至少一个关键词')
+        await streamDossierSearch(folder, keywords, res)
         return
       }
 
@@ -3114,17 +3061,9 @@ function createHandler(ctx, config) {
 
       if (method === 'GET' && pathname === '/dossiers/search') {
         const folder = (url.searchParams.get('folder') ?? '').trim()
-        const filters = {
-          q: (url.searchParams.get('q') ?? '').trim(),
-          court: (url.searchParams.get('court') ?? '').trim(),
-          caseNo: (url.searchParams.get('caseNo') ?? '').trim(),
-          party: (url.searchParams.get('party') ?? '').trim(),
-          cause: (url.searchParams.get('cause') ?? '').trim(),
-          dateFrom: (url.searchParams.get('dateFrom') ?? '').trim(),
-          dateTo: (url.searchParams.get('dateTo') ?? '').trim(),
-        }
-        if (Object.values(filters).every((value) => value === '')) throw new HttpError(400, 'EMPTY_QUERY', '请输入关键词或至少一个筛选条件')
-        sendJson(res, 200, await searchDossiers(folder, filters))
+        const keywords = url.searchParams.getAll('q').map((entry) => entry.trim()).filter((entry) => entry !== '')
+        if (keywords.length === 0) throw new HttpError(400, 'EMPTY_QUERY', '请输入至少一个关键词')
+        sendJson(res, 200, await searchDossiers(folder, keywords))
         return
       }
 
