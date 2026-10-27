@@ -2270,6 +2270,75 @@ function createHandler(ctx, config) {
     }
   }
 
+  async function dossierAsk(req, res) {
+    const payload = await readJson(req)
+    const question = typeof payload.question === 'string' ? payload.question.trim().slice(0, 1000) : ''
+    const selection = typeof payload.selection === 'string' ? payload.selection.trim().slice(0, 8000) : ''
+    const summary = typeof payload.summary === 'string' ? payload.summary.trim().slice(0, 50000) : ''
+    if (question === '' && selection === '') throw new HttpError(400, 'EMPTY_QUESTION', '请输入追问内容或选中一段总结')
+    const route = resolveModelRoute(ctx, config)
+    if (route === undefined) throw new HttpError(503, 'NO_MODEL', '还没有选择模型')
+    const llm = ctx.get('llm')
+    if (llm === undefined || typeof llm.stream !== 'function') throw new HttpError(503, 'NO_MODEL', '当前环境没有可用的模型服务')
+    const history = Array.isArray(payload.history)
+      ? payload.history.filter((turn) => turn !== null && typeof turn === 'object' && (turn.role === 'user' || turn.role === 'assistant') && typeof turn.text === 'string').slice(-10)
+      : []
+    const controller = new AbortController()
+    let closed = false
+    res.on('close', () => { if (!res.writableEnded) { closed = true; controller.abort() } })
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+      'X-Content-Type-Options': 'nosniff',
+    })
+    if (typeof res.flushHeaders === 'function') res.flushHeaders()
+    await writeSse(res, ': connected\n\n')
+    const heartbeat = setInterval(() => { if (!closed) void writeSse(res, ': ping\n\n') }, 15000)
+    if (typeof heartbeat.unref === 'function') heartbeat.unref()
+    const send = async (event) => {
+      if (!closed) await writeSse(res, `data: ${JSON.stringify(event)}\n\n`)
+    }
+    try {
+      await send({ type: 'status', text: '正在思考…' })
+      const system = '你是卷宗分析助手。请基于卷宗 AI 总结回答追问；如果有选中的总结文字，优先解释该段。不要编造总结中没有的事实。用简体中文简洁回答。'
+      const prompt = [
+        summary === '' ? '' : `<!-- SUMMARY -->\n${summary}\n<!-- /SUMMARY -->`,
+        selection === '' ? '' : `<!-- SELECTION -->\n${selection}\n<!-- /SELECTION -->`,
+        history.length === 0 ? '' : `<!-- HISTORY -->\n${history.map((turn) => `${turn.role === 'user' ? '用户' : 'AI'}：${String(turn.text).slice(0, 4000)}`).join('\n')}\n<!-- /HISTORY -->`,
+        `用户追问：${question === '' ? '请解释我选中的这段总结。' : question}`,
+      ].filter(Boolean).join('\n\n')
+      const request = { system, messages: [{ role: 'user', content: [{ type: 'text', text: prompt.slice(0, 70000) }] }], signal: controller.signal }
+      const call = { provider: route.provider, model: route.model, temperature: 0.25, maxTokens: 1200 }
+      const stream = typeof llm.prepareCall === 'function'
+        ? await (async () => { const prepared = await llm.prepareCall(call, controller.signal); return prepared.stream({ ...prepared.config, ...request }) })()
+        : llm.stream({ ...call, ...request })
+      let full = ''
+      for await (const chunk of stream) {
+        if (closed) break
+        if (chunk.type === 'text-delta') {
+          full += chunk.text
+          if (!(await writeSse(res, `data: ${JSON.stringify({ type: 'delta', text: chunk.text })}\n\n`))) break
+        } else if (chunk.type === 'finish' && chunk.reason.kind === 'error') {
+          throw new Error(chunk.reason.failure?.message ?? '模型返回了错误')
+        }
+      }
+      if (!closed) {
+        await writeSse(res, `data: ${JSON.stringify({ type: 'done', text: full })}\n\n`)
+        res.end()
+      }
+    } catch (error) {
+      if (!closed) {
+        await writeSse(res, `event: error\ndata: ${JSON.stringify({ type: 'error', error: publicErrorMessage(error) })}\n\n`)
+        res.end()
+      }
+    } finally {
+      clearInterval(heartbeat)
+      if (!closed) controller.abort()
+    }
+  }
+
   async function translatePaperUnit(id, key, force) {
     const archiveDir = await ensureArchiveDir(config, ctx)
     const { sourcePaper, sourceBook, translation } = await paperContext(id, archiveDir)
@@ -2986,6 +3055,11 @@ function createHandler(ctx, config) {
 
       if (method === 'POST' && pathname === '/dossiers/summary') {
         await dossierSummary(req, res)
+        return
+      }
+
+      if (method === 'POST' && pathname === '/dossiers/ask') {
+        await dossierAsk(req, res)
         return
       }
 

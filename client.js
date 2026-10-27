@@ -150,6 +150,15 @@ window.__ModuleLoader__.load({
       'dossiers.summarySearchTitle': 'AI 总结搜索结果',
       'dossiers.summarizing': '正在分析卷宗…',
       'dossiers.summaryPreparing': '正在准备总结…',
+      'dossiers.followUpPlaceholder': '继续追问 AI 总结…',
+      'dossiers.followUpSelectedPlaceholder': '追问选中的总结文字…',
+      'dossiers.followUpHint': '可直接输入追问，或先用鼠标选中上方总结文字。',
+      'dossiers.selectedSummary': '已选中总结',
+      'dossiers.clearSelection': '清除选中',
+      'dossiers.askSelected': '请解释我选中的这段总结。',
+      'dossiers.followUpLabel': '追问',
+      'dossiers.thinking': '正在思考…',
+      'dossiers.send': '追问',
       'dossiers.searching': '搜索中…',
       'dossiers.stopSearch': '停止搜索',
       'dossiers.searchCount': '找到 {count} 个',
@@ -415,6 +424,15 @@ window.__ModuleLoader__.load({
       'dossiers.summarySearchTitle': 'AI search summary',
       'dossiers.summarizing': 'Analyzing dossiers…',
       'dossiers.summaryPreparing': 'Preparing summary…',
+      'dossiers.followUpPlaceholder': 'Ask a follow-up about the summary…',
+      'dossiers.followUpSelectedPlaceholder': 'Ask about the selected summary text…',
+      'dossiers.followUpHint': 'Type a follow-up, or select summary text with the mouse first.',
+      'dossiers.selectedSummary': 'Selected summary',
+      'dossiers.clearSelection': 'Clear selection',
+      'dossiers.askSelected': 'Explain the selected summary passage.',
+      'dossiers.followUpLabel': 'Follow-up',
+      'dossiers.thinking': 'Thinking…',
+      'dossiers.send': 'Ask',
       'dossiers.searching': 'Searching…',
       'dossiers.stopSearch': 'Stop search',
       'dossiers.searchCount': '{count} found',
@@ -1090,6 +1108,19 @@ window.__ModuleLoader__.load({
 .epub-dossier-summary-actions { display: flex; align-items: center; gap: 5px; }
 .epub-dossier-summary-status { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; color: var(--epub-muted); font-family: var(--epub-sans, inherit); font-size: 9.5px; line-height: 1.5; }
 .epub-dossier-summary-body { flex: 1; overflow: auto; padding: 16px; color: var(--epub-text); font-family: var(--epub-serif); font-size: 13px; line-height: 1.8; white-space: pre-wrap; }
+.epub-dossier-turn { margin-top: 12px; padding: 8px 10px; border-radius: 8px; white-space: pre-wrap; font-family: var(--epub-sans, inherit); font-size: 11px; line-height: 1.65; }
+.epub-dossier-turn.is-user { background: var(--epub-surface-2); color: var(--epub-text); }
+.epub-dossier-turn.is-assistant { background: color-mix(in srgb, var(--epub-accent) 5%, var(--epub-surface)); color: var(--epub-text); }
+.epub-dossier-turn-label { display: block; margin-bottom: 3px; color: var(--epub-muted); font-size: 8.5px; text-transform: uppercase; letter-spacing: .05em; }
+.epub-dossier-followup { flex: none; padding: 9px 14px 12px; border-top: 1px solid var(--epub-line); background: var(--epub-surface); }
+.epub-dossier-followup-row { display: flex; align-items: center; gap: 6px; }
+.epub-dossier-followup-row input { flex: 1; min-width: 0; height: 32px; padding: 0 9px; border: 1px solid var(--epub-line); border-radius: 7px; outline: 0; background: var(--dsw-alias-bg-base); color: var(--epub-text); font-size: 10.5px; }
+.epub-dossier-followup-row input:focus { border-color: color-mix(in srgb, var(--epub-accent) 45%, var(--epub-line)); }
+.epub-dossier-followup-row .epub-btn { height: 32px; font-size: 10px; }
+.epub-dossier-followup-hint { margin: 5px 0 0; color: var(--epub-muted); font-size: 8.5px; line-height: 1.45; }
+.epub-dossier-selection-chip { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; padding: 4px 6px; border-radius: 6px; background: color-mix(in srgb, var(--epub-accent) 8%, transparent); color: var(--epub-muted); font-size: 8.5px; line-height: 1.4; }
+.epub-dossier-selection-chip span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.epub-dossier-selection-chip button { border: 0; background: transparent; color: var(--epub-muted); font-size: 13px; line-height: 1; }
 .epub-dossier-summary-error { margin: 0; padding: 10px 16px 0; color: var(--epub-danger); font-size: 10px; }
 .epub-paper-compare { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
 .epub-paper-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
@@ -3197,9 +3228,10 @@ window.__ModuleLoader__.load({
       const [expandedFolders, setExpandedFolders] = React.useState(() => new Set())
       const [clearConfirm, setClearConfirm] = React.useState(null)
       const [skillEditor, setSkillEditor] = React.useState(null)
-      const [summary, setSummary] = React.useState({ open: false, status: 'idle', text: '', title: '', error: '', statusText: '' })
+      const [summary, setSummary] = React.useState({ open: false, status: 'idle', text: '', title: '', error: '', statusText: '', turns: [], question: '', selection: '', askStatus: 'idle' })
       const fileRef = React.useRef(null)
       const summaryAbort = React.useRef(null)
+      const summaryInputRef = React.useRef(null)
       const searchAbort = React.useRef(null)
 
       const load = React.useCallback(async () => {
@@ -3409,14 +3441,17 @@ window.__ModuleLoader__.load({
       function stopSummary() {
         summaryAbort.current?.abort()
         summaryAbort.current = null
-        setSummary((current) => ({ ...current, status: current.status === 'streaming' ? 'idle' : current.status, statusText: '' }))
+        setSummary((current) => {
+          const turns = current.turns.map((turn, index) => index === current.turns.length - 1 && turn.role === 'assistant' && turn.status === 'streaming' ? { ...turn, status: 'idle' } : turn)
+          return { ...current, turns, status: current.status === 'streaming' ? 'idle' : current.status, askStatus: current.askStatus === 'streaming' ? 'idle' : current.askStatus, statusText: '' }
+        })
       }
 
       async function startSummary(options = {}) {
         const controller = new AbortController()
         summaryAbort.current?.abort()
         summaryAbort.current = controller
-        setSummary({ open: true, status: 'streaming', text: '', title: options.title ?? t('dossiers.summaryTitle'), error: '', statusText: t('dossiers.summaryPreparing') })
+        setSummary({ open: true, status: 'streaming', text: '', title: options.title ?? t('dossiers.summaryTitle'), error: '', statusText: t('dossiers.summaryPreparing'), turns: [], question: '', selection: '', askStatus: 'idle' })
         try {
           await apiStreamJson('/dossiers/summary', {
             folderId,
@@ -3442,10 +3477,84 @@ window.__ModuleLoader__.load({
         }
       }
 
+      function captureSummarySelection(event) {
+        const selection = window.getSelection()
+        const text = selection === null ? '' : selection.toString().trim()
+        if (text === '') return
+        const anchor = selection.anchorNode
+        if (anchor !== null && anchor !== undefined && !event.currentTarget.contains(anchor)) return
+        setSummary((current) => ({ ...current, selection: text }))
+        window.requestAnimationFrame(() => summaryInputRef.current?.focus())
+      }
+
+      async function askSummary() {
+        if (summary.status === 'streaming' || summary.askStatus === 'streaming') return
+        const question = summary.question.trim()
+        const selected = summary.selection.trim()
+        if (question === '' && selected === '') return
+        const text = question === '' ? t('dossiers.askSelected') : question
+        const history = summary.turns
+          .filter((turn) => (turn.role === 'user' || turn.role === 'assistant') && turn.text.trim() !== '')
+          .slice(-10)
+        const controller = new AbortController()
+        summaryAbort.current?.abort()
+        summaryAbort.current = controller
+        setSummary((current) => ({
+          ...current,
+          turns: [...current.turns, { role: 'user', text }, { role: 'assistant', text: '', status: 'streaming' }],
+          question: '',
+          selection: '',
+          askStatus: 'streaming',
+          statusText: t('dossiers.thinking'),
+          error: '',
+        }))
+        try {
+          await apiStreamJson('/dossiers/ask', {
+            folderId,
+            summary: summary.text,
+            selection: selected,
+            question,
+            history,
+          }, {
+            signal: controller.signal,
+            onEvent: (event) => {
+              if (event.type === 'status' && typeof event.text === 'string') {
+                setSummary((current) => ({ ...current, statusText: event.text }))
+              } else if (event.type === 'delta' && typeof event.text === 'string') {
+                setSummary((current) => {
+                  const turns = [...current.turns]
+                  const last = turns[turns.length - 1]
+                  if (last !== undefined && last.role === 'assistant') turns[turns.length - 1] = { ...last, text: last.text + event.text }
+                  return { ...current, turns }
+                })
+              } else if (event.type === 'done') {
+                setSummary((current) => {
+                  const turns = [...current.turns]
+                  const last = turns[turns.length - 1]
+                  if (last !== undefined && last.role === 'assistant') turns[turns.length - 1] = { ...last, text: event.text ?? last.text, status: 'done' }
+                  return { ...current, turns, askStatus: 'done', statusText: '' }
+                })
+              } else if (event.type === 'error') {
+                setSummary((current) => {
+                  const turns = current.turns.map((turn, index) => index === current.turns.length - 1 && turn.role === 'assistant' ? { ...turn, status: 'error' } : turn)
+                  return { ...current, turns, askStatus: 'error', statusText: '', error: String(event.error ?? 'AI 追问失败') }
+                })
+              }
+            },
+          })
+        } catch (reason) {
+          if (controller.signal.aborted) return
+          setSummary((current) => {
+            const turns = current.turns.map((turn, index) => index === current.turns.length - 1 && turn.role === 'assistant' ? { ...turn, status: 'error' } : turn)
+            return { ...current, turns, askStatus: 'error', statusText: '', error: reason instanceof Error ? reason.message : String(reason) }
+          })
+        }
+      }
+
       function closeSummary() {
         summaryAbort.current?.abort()
         summaryAbort.current = null
-        setSummary({ open: false, status: 'idle', text: '', title: '', error: '', statusText: '' })
+        setSummary({ open: false, status: 'idle', text: '', title: '', error: '', statusText: '', turns: [], question: '', selection: '', askStatus: 'idle' })
       }
 
       async function clearFolder() {
@@ -3659,14 +3768,38 @@ window.__ModuleLoader__.load({
                 h('header', null,
                   h('div', null, h('p', { className: 'epub-eyebrow' }, 'AI DOSSIER'), h('h3', null, summary.title)),
                   h('div', { className: 'epub-dossier-summary-actions' },
-                    summary.status === 'streaming' ? h('button', { type: 'button', className: 'epub-btn', onClick: stopSummary }, t('dossiers.stop')) : null,
+                    summary.status === 'streaming' || summary.askStatus === 'streaming' ? h('button', { type: 'button', className: 'epub-btn', onClick: stopSummary }, t('dossiers.stop')) : null,
                     h('button', { type: 'button', className: 'epub-icon-btn', onClick: closeSummary, title: t('papers.close') }, h(IconX, { size: 16 })),
                   ),
                 ),
                 summary.error !== '' ? h('p', { className: 'epub-dossier-summary-error' }, summary.error) : null,
-                h('div', { className: 'epub-dossier-summary-body' },
+                h('div', { className: 'epub-dossier-summary-body', onMouseUp: captureSummarySelection },
                   summary.statusText !== '' ? h('div', { className: 'epub-dossier-summary-status' }, h(Spinner, null), h('span', null, summary.statusText)) : null,
                   summary.status === 'streaming' && summary.text === '' ? null : summary.text,
+                  summary.turns.map((turn, index) => h('div', { key: `turn-${index}`, className: cn('epub-dossier-turn', turn.role === 'user' ? 'is-user' : 'is-assistant') },
+                    h('span', { className: 'epub-dossier-turn-label' }, turn.role === 'user' ? t('dossiers.followUpLabel') : 'AI'),
+                    h('div', null, turn.text === '' && turn.status === 'streaming' ? h(Spinner, null) : turn.text),
+                  )),
+                ),
+                h('div', { className: 'epub-dossier-followup' },
+                  summary.selection !== ''
+                    ? h('div', { className: 'epub-dossier-selection-chip' },
+                        h('span', null, `${t('dossiers.selectedSummary')}：${summary.selection.slice(0, 80)}${summary.selection.length > 80 ? '…' : ''}`),
+                        h('button', { type: 'button', onClick: () => setSummary((current) => ({ ...current, selection: '' })), title: t('dossiers.clearSelection') }, '×'),
+                      )
+                    : null,
+                  h('div', { className: 'epub-dossier-followup-row' },
+                    h('input', {
+                      ref: summaryInputRef,
+                      value: summary.question,
+                      onChange: (event) => setSummary((current) => ({ ...current, question: event.target.value })),
+                      onKeyDown: (event) => { if (event.key === 'Enter') { event.preventDefault(); void askSummary() } },
+                      placeholder: summary.selection === '' ? t('dossiers.followUpPlaceholder') : t('dossiers.followUpSelectedPlaceholder'),
+                      disabled: summary.status === 'streaming' || summary.askStatus === 'streaming',
+                    }),
+                    h('button', { type: 'button', className: 'epub-btn epub-btn-primary', onClick: () => void askSummary(), disabled: summary.status === 'streaming' || summary.askStatus === 'streaming' || (summary.question.trim() === '' && summary.selection === '') }, t('dossiers.send')),
+                  ),
+                  h('p', { className: 'epub-dossier-followup-hint' }, t('dossiers.followUpHint')),
                 ),
               ),
             )
