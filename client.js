@@ -150,6 +150,8 @@ window.__ModuleLoader__.load({
       'dossiers.summarySearchTitle': 'AI 总结搜索结果',
       'dossiers.summarizing': '正在分析卷宗…',
       'dossiers.summaryPreparing': '正在准备总结…',
+      'dossiers.summaryEmpty': 'AI 没有返回总结内容，请重试。',
+      'dossiers.retry': '重试',
       'dossiers.followUpPlaceholder': '继续追问 AI 总结…',
       'dossiers.followUpSelectedPlaceholder': '追问选中的总结文字…',
       'dossiers.followUpHint': '可直接输入追问，或先用鼠标选中上方总结文字。',
@@ -424,6 +426,8 @@ window.__ModuleLoader__.load({
       'dossiers.summarySearchTitle': 'AI search summary',
       'dossiers.summarizing': 'Analyzing dossiers…',
       'dossiers.summaryPreparing': 'Preparing summary…',
+      'dossiers.summaryEmpty': 'AI returned no summary content. Please retry.',
+      'dossiers.retry': 'Retry',
       'dossiers.followUpPlaceholder': 'Ask a follow-up about the summary…',
       'dossiers.followUpSelectedPlaceholder': 'Ask about the selected summary text…',
       'dossiers.followUpHint': 'Type a follow-up, or select summary text with the mouse first.',
@@ -1123,6 +1127,9 @@ window.__ModuleLoader__.load({
 .epub-dossier-selection-chip { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; padding: 4px 6px; border-radius: 6px; background: color-mix(in srgb, var(--epub-accent) 8%, transparent); color: var(--epub-muted); font-size: 8.5px; line-height: 1.4; }
 .epub-dossier-selection-chip span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .epub-dossier-selection-chip button { border: 0; background: transparent; color: var(--epub-muted); font-size: 13px; line-height: 1; }
+.epub-dossier-summary-error-block { display: flex; align-items: center; gap: 8px; margin: 8px 16px 0; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--epub-danger) 28%, var(--epub-line)); border-radius: 7px; background: color-mix(in srgb, var(--epub-danger) 5%, transparent); }
+.epub-dossier-summary-error-block p { flex: 1; margin: 0; color: var(--epub-danger); font-size: 9.5px; line-height: 1.5; }
+.epub-dossier-summary-error-block .epub-btn { flex: none; height: 27px; font-size: 9.5px; }
 .epub-dossier-summary-error { margin: 0; padding: 10px 16px 0; color: var(--epub-danger); font-size: 10px; }
 .epub-paper-compare { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
 .epub-paper-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
@@ -3230,7 +3237,7 @@ window.__ModuleLoader__.load({
       const [expandedFolders, setExpandedFolders] = React.useState(() => new Set())
       const [clearConfirm, setClearConfirm] = React.useState(null)
       const [skillEditor, setSkillEditor] = React.useState(null)
-      const [summary, setSummary] = React.useState({ open: false, status: 'idle', busy: false, text: '', title: '', error: '', statusText: '', turns: [], question: '', selection: '', askStatus: 'idle' })
+      const [summary, setSummary] = React.useState({ open: false, status: 'idle', busy: false, text: '', title: '', error: '', statusText: '', turns: [], question: '', selection: '', askStatus: 'idle', lastOptions: null })
       const fileRef = React.useRef(null)
       const summaryAbort = React.useRef(null)
       const summaryInputRef = React.useRef(null)
@@ -3454,7 +3461,7 @@ window.__ModuleLoader__.load({
         const controller = new AbortController()
         summaryAbort.current?.abort()
         summaryAbort.current = controller
-        setSummary({ open: true, status: 'streaming', busy: true, text: '', title: options.title ?? t('dossiers.summaryTitle'), error: '', statusText: t('dossiers.summaryPreparing'), turns: [], question: '', selection: '', askStatus: 'idle' })
+        setSummary({ open: true, status: 'streaming', busy: true, text: '', title: options.title ?? t('dossiers.summaryTitle'), error: '', statusText: t('dossiers.summaryPreparing'), turns: [], question: '', selection: '', askStatus: 'idle', lastOptions: options })
         try {
           await apiStreamJson('/dossiers/summary', {
             folderId,
@@ -3468,7 +3475,11 @@ window.__ModuleLoader__.load({
               } else if (event.type === 'delta' && typeof event.text === 'string') {
                 setSummary((current) => ({ ...current, text: current.text + event.text }))
               } else if (event.type === 'done') {
-                setSummary((current) => ({ ...current, status: 'done', statusText: '', text: event.text ?? current.text }))
+                setSummary((current) => {
+                  const text = event.text ?? current.text
+                  if (String(text).trim() === '') return { ...current, status: 'error', statusText: '', error: t('dossiers.summaryEmpty') }
+                  return { ...current, status: 'done', statusText: '', text }
+                })
               } else if (event.type === 'error') {
                 setSummary((current) => ({ ...current, status: 'error', statusText: '', error: String(event.error ?? 'AI 总结失败') }))
               }
@@ -3558,10 +3569,14 @@ window.__ModuleLoader__.load({
         }
       }
 
+      function retrySummary() {
+        void startSummary(summary.lastOptions ?? {})
+      }
+
       function closeSummary() {
         summaryAbort.current?.abort()
         summaryAbort.current = null
-        setSummary({ open: false, status: 'idle', busy: false, text: '', title: '', error: '', statusText: '', turns: [], question: '', selection: '', askStatus: 'idle' })
+        setSummary({ open: false, status: 'idle', busy: false, text: '', title: '', error: '', statusText: '', turns: [], question: '', selection: '', askStatus: 'idle', lastOptions: null })
       }
 
       async function clearFolder() {
@@ -3779,7 +3794,12 @@ window.__ModuleLoader__.load({
                     h('button', { type: 'button', className: 'epub-icon-btn', onClick: closeSummary, title: t('papers.close') }, h(IconX, { size: 16 })),
                   ),
                 ),
-                summary.error !== '' ? h('p', { className: 'epub-dossier-summary-error' }, summary.error) : null,
+                summary.error !== ''
+                  ? h('div', { className: 'epub-dossier-summary-error-block' },
+                      h('p', null, summary.error),
+                      h('button', { type: 'button', className: 'epub-btn', onClick: retrySummary }, t('dossiers.retry')),
+                    )
+                  : null,
                 h('div', { className: 'epub-dossier-summary-body', onMouseUp: captureSummarySelection },
                   summary.statusText !== '' ? h('div', { className: 'epub-dossier-summary-status' }, h(Spinner, null), h('span', null, summary.statusText)) : null,
                   summary.status === 'streaming' && summary.text === '' ? null : summary.text,
